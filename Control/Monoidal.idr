@@ -1,10 +1,12 @@
 module Control.Monoidal
 
+%default total
+
 infixl 6 <&>
 infixl 6 <&
 infixl 6 &>
 
-export
+public export
 interface Applicative f => Monoidal f where
   (<&>) : f a -> f b -> f (a, b)
   (<&>) x y = pure (\x, y => (x, y)) <*> x <*> y
@@ -18,10 +20,10 @@ interface Applicative f => Monoidal f where
   (&>) : f a -> f b -> f b
   (&>) x y = pure snd <*> x <&> y
 
-export
+public export
 implementation Monoidal Maybe
 
-export
+public export
 implementation Monoidal (Either e)
 
 -- export
