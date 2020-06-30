@@ -1,5 +1,6 @@
 module Task
 
+import Data.SortedMap
 -- import Task.Universe
 
 
@@ -66,7 +67,7 @@ mutual
     Enter : (Basic t) => Editor h t
     Update : (Basic t) => t -> Editor h t
     View : (Basic t) => t -> Editor h t
-    Select : List (Label, Task h t) -> Editor h t
+    Select : SortedMap Label (Task h t) -> Editor h t
     ---- Shared
     Change : (Basic t) => Ref h t -> Editor h t
     Watch : (Basic t) => Ref h t -> Editor h t
