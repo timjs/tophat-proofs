@@ -1,15 +1,9 @@
 module Task.Universe
 
-import Data.Strings
-import Decidable.Equality
+import public Decidable.Equality
+import public Task.Heap
 
 %default total
-
----- Universes -----------------------------------------------------------------
-
-public export
-interface DecEq t => Universe t where
-  typeOf : t -> Type
 
 ---- Primitive types -----------------------------------------------------------
 
@@ -43,18 +37,19 @@ DecEq PrimTy where
   decEq INT    STRING = No absurd
   decEq STRING INT    = No (negEqSym absurd)
 
-Universe PrimTy where
-  typeOf BOOL   = Bool
-  typeOf INT    = Int
-  typeOf STRING = String
+public export
+primOf : PrimTy -> Type
+primOf BOOL   = Bool
+primOf INT    = Int
+primOf STRING = String
 
----- Normal types --------------------------------------------------------------
+---- Full types ----------------------------------------------------------------
 
 public export
 data Ty
   = UNIT
   | PAIR Ty Ty
-  | REF Ty
+  | REF Heap Ty
   | PRIM PrimTy
 
 ---- Lemmas
@@ -62,57 +57,66 @@ data Ty
 Uninhabited (UNIT = PAIR _ _) where
   uninhabited Refl impossible
 
-Uninhabited (UNIT = REF _) where
+Uninhabited (UNIT = REF _ _) where
   uninhabited Refl impossible
 
 Uninhabited (UNIT = PRIM _) where
   uninhabited Refl impossible
 
-Uninhabited (PAIR _ _ = REF _) where
+Uninhabited (PAIR _ _ = REF _ _) where
   uninhabited Refl impossible
 
 Uninhabited (PAIR _ _ = PRIM _) where
   uninhabited Refl impossible
 
-Uninhabited (REF _ = PRIM _) where
+Uninhabited (REF _ _ = PRIM _) where
   uninhabited Refl impossible
 
 private
-fst_neq : (a = a' -> Void) -> (PAIR a b = PAIR a' b) -> Void
+fst_neq : Not (a = a') -> Not (PAIR a b = PAIR a' b)
 fst_neq contra Refl = contra Refl
 
 private
-snd_neq : (b = b' -> Void) -> (PAIR a b = PAIR a b') -> Void
+snd_neq : Not (b = b') -> Not (PAIR a b = PAIR a b')
 snd_neq contra Refl = contra Refl
 
 private
-both_neq : (a = a' -> Void) -> (b = b' -> Void) -> (PAIR a b = PAIR a' b') -> Void
-both_neq contra_a contra_b Refl = contra_a Refl
+both_neq : Not (a = a') -> Not (b = b') -> Not (PAIR a b = PAIR a' b')
+both_neq contra _ Refl = contra Refl
 
 private
-ref_neq : (a = b -> Void) -> (REF a = REF b) -> Void
+ref_neq : Not (a = a') -> Not (REF h a = REF h a')
 ref_neq contra Refl = contra Refl
 
 private
-prim_neq : (p = q -> Void) -> (PRIM p = PRIM q) -> Void
+heap_neq : Not (h = h') -> Not (REF h a = REF h' a)
+heap_neq contra Refl = contra Refl
+
+private
+all_neq : Not (h = h') -> Not (a = a') -> Not (REF h a = REF h' a')
+all_neq contra _ Refl = contra Refl
+
+private
+prim_neq : Not (p = q) -> Not (PRIM p = PRIM q)
 prim_neq contra Refl = contra Refl
 
 ---- Decidablility
 
+export
 DecEq Ty where
   decEq UNIT UNIT                                                 = Yes Refl
 
-  decEq (PAIR a b) (PAIR a' b')     with (decEq a a')
-    decEq (PAIR a b) (PAIR a b')    | (Yes Refl)  with (decEq b b')
-      decEq (PAIR a b) (PAIR a b)   | (Yes Refl)  | (Yes Refl)    = Yes Refl
-      decEq (PAIR a b) (PAIR a b')  | (Yes Refl)  | (No contra)   = No (snd_neq contra)
-    decEq (PAIR a b) (PAIR a' b')   | (No contra) with (decEq b b')
-      decEq (PAIR a b) (PAIR a' b)  | (No contra) | (Yes Refl)    = No (fst_neq contra)
-      decEq (PAIR a b) (PAIR a' b') | (No contra) | (No contra')  = No (both_neq contra contra')
+  decEq (PAIR a b) (PAIR a' b')   with (decEq a a', decEq b b')
+    decEq (PAIR a b) (PAIR a b)   | (Yes Refl,  Yes Refl)         = Yes Refl
+    decEq (PAIR a b) (PAIR a b')  | (Yes Refl,  No contra)        = No (snd_neq contra)
+    decEq (PAIR a b) (PAIR a' b)  | (No contra, Yes Refl)         = No (fst_neq contra)
+    decEq (PAIR a b) (PAIR a' b') | (No contra, No contra')       = No (both_neq contra contra')
 
-  decEq (REF a)  (REF b)   with (decEq a b)
-    decEq (REF b)  (REF b) | (Yes Refl)                           = Yes Refl
-    decEq (REF a)  (REF b) | (No contra)                          = No (ref_neq contra)
+  decEq (REF h a)  (REF h' a')   with (decEq h h', decEq a a')
+    decEq (REF h a)  (REF h a)   | (Yes Refl,  Yes Refl)          = Yes Refl
+    decEq (REF h a)  (REF h a')  | (Yes Refl,  No contra)         = No (ref_neq contra)
+    decEq (REF h a)  (REF h' a)  | (No contra, Yes Refl)          = No (heap_neq contra)
+    decEq (REF h a)  (REF h' a') | (No contra, No contra')        = No (all_neq contra contra')
 
   decEq (PRIM p)  (PRIM q)   with (decEq p q)
     decEq (PRIM q)  (PRIM q) | (Yes Refl)                         = Yes Refl
@@ -120,25 +124,32 @@ DecEq Ty where
 
   decEq (UNIT)     (PAIR _ _)                                     = No absurd
   decEq (PAIR _ _) (UNIT)                                         = No (negEqSym absurd)
-  decEq (UNIT)     (REF _)                                        = No absurd
-  decEq (REF _)    (UNIT)                                         = No (negEqSym absurd)
+  decEq (UNIT)     (REF _ _)                                      = No absurd
+  decEq (REF _ _)  (UNIT)                                         = No (negEqSym absurd)
   decEq (UNIT)     (PRIM _)                                       = No absurd
   decEq (PRIM _)   (UNIT)                                         = No (negEqSym absurd)
 
-  decEq (PAIR _ _) (REF _)                                        = No absurd
-  decEq (REF _)    (PAIR _ _)                                     = No (negEqSym absurd)
+  decEq (PAIR _ _) (REF _ _)                                      = No absurd
+  decEq (REF _ _)  (PAIR _ _)                                     = No (negEqSym absurd)
   decEq (PAIR _ _) (PRIM _)                                       = No absurd
   decEq (PRIM _)   (PAIR _ _)                                     = No (negEqSym absurd)
 
-  decEq (REF _)    (PRIM _)                                       = No absurd
-  decEq (PRIM _)   (REF _)                                        = No (negEqSym absurd)
+  decEq (REF _ _)  (PRIM _)                                       = No absurd
+  decEq (PRIM _)   (REF _ _)                                      = No (negEqSym absurd)
 
---FIXME: hack!
-data Ref : Type -> Type where
-  Loc : Ref t
+public export
+typeOf : Ty -> Type
+typeOf UNIT       = ()
+typeOf (PAIR a b) = (typeOf a, typeOf b)
+typeOf (REF h a)  = Ref h (typeOf a)
+typeOf (PRIM p)   = primOf p
 
-Universe Ty where
-  typeOf UNIT       = ()
-  typeOf (PAIR a b) = (typeOf a, typeOf b)
-  typeOf (REF a)    = Ref (typeOf a)
-  typeOf (PRIM p)   = typeOf p
+---- Basic types ---------------------------------------------------------------
+
+public export
+data IsBasic : Ty -> Type where
+  UnitIsBasic   : IsBasic UNIT
+  BoolIsBasic   : IsBasic (PRIM BOOL)
+  IntIsBasic    : IsBasic (PRIM INT)
+  StringIsBasic : IsBasic (PRIM STRING)
+  PairIsBasic   : IsBasic a -> IsBasic b -> IsBasic (PAIR a b)

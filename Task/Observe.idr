@@ -7,7 +7,7 @@ import Task.Syntax
 
 ---- Values --------------------------------------------------------------------
 
-value' : MonadState (State Single) m => Editor Single a -> m (Maybe a)
+value' : MonadState (State h) m => Editor h a -> m (Maybe (typeOf a))
 value' (Enter)    = pure Nothing
 value' (Update b) = pure (Just b)
 value' (View b)   = pure (Just b)
@@ -15,7 +15,8 @@ value' (Select _) = pure Nothing
 value' (Change l) = pure Just <*> gets (read l)
 value' (Watch l)  = pure Just <*> gets (read l)
 
-value : MonadState (State Single) m => Task Single a -> m (Maybe a)
+export
+value : MonadState (State h) m => Task h a -> m (Maybe (typeOf a))
 value (Edit Unnamed _)   = pure Nothing
 value (Edit (Named _) e) = value' e
 value (Trans f t)        = pure (map f) <*> value t
@@ -39,6 +40,7 @@ mutual
   failing' (Change _)  = False
   failing' (Watch _)   = False
 
+  export
   failing : Task h a -> Bool
   failing (Edit _ e)     = failing' e
   failing (Trans _ t2)   = failing t2
@@ -56,6 +58,7 @@ mutual
 options' : List (Label, Task h a) -> List Label
 options' = map fst . filter (not . failing . snd)
 
+export
 options : Task h a -> List Option
 options (Edit n (Select ts)) = map (AOption n) $ options' ts
 options (Trans _ t2)         = options t2
@@ -68,7 +71,7 @@ infixl 1 #
 (#) : a -> (a -> b) -> b
 (#) x f = f x
 
-inputs' : {b : Type} -> Editor h b -> List Dummy
+inputs' : {b : Ty} -> Editor h b -> List Dummy
 inputs' (Enter)    = [ADummy b]
 inputs' (Update _) = [ADummy b]
 inputs' (View _)   = []
@@ -76,7 +79,8 @@ inputs' (Select _) = [] --NOTE: selections do not have `IEnter` actions and are 
 inputs' (Change _) = [ADummy b]
 inputs' (Watch _)  = []
 
-inputs : MonadState (State Single) m => Task Single a -> m (List (Input Dummy))
+export
+inputs : MonadState (State h) m => Task h a -> m (List (Input Dummy))
 inputs (Edit Unnamed _)               = pure []
 inputs (Edit (Named n) (Select ts))   = options' ts # map (ISelect n) # pure
 inputs (Edit (Named n) e)             = inputs' e # map (IEnter n) # pure

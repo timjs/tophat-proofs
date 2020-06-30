@@ -1,40 +1,8 @@
 module Task.Syntax
 
--- import Task.Universe
+import public Task.Universe
 
-
----- Basic types ---------------------------------------------------------------
-
-interface Basic t where
-
-Basic Bool where
-Basic Int where
-Basic String where
-(Basic a, Basic b) => Basic (a, b) where
-
----- Heaps ---------------------------------------------------------------------
-
-||| Heap shape
-public export
-data Heap
-  ||| Single integer
-  = Single
-
-||| References into the heap
-public export
-data Ref : Heap -> Type -> Type where
-  ||| Location of single integer
-  Loc : Ref Single Int
-
-||| Concrete heap of certain shape
-export
-data State : Heap -> Type where
-  ||| Value of single integer
-  Saved : Int -> State Single
-
-export
-read : Ref h t -> State h -> t
-read Loc (Saved x) = x
+%default total
 
 ---- Tasks ---------------------------------------------------------------------
 
@@ -47,46 +15,64 @@ data Name
   = Unnamed
   | Named Nat
 
+export
+Eq Name where
+  (==) (Unnamed) (Unnamed)  = True
+  (==) (Named i) (Named i') = i == i'
+  (==) _         _          = False
+
 mutual
 
   public export
-  data Task : (h : Heap) -> (t : Type) -> Type where
+  data Task : (h : Heap) -> (t : Ty) -> Type where
     ---- Editors
-    Edit : {t : Type} -> Name -> Editor h t -> Task h t
+    Edit : {t : Ty} -> Name -> Editor h t -> Task h t
     ---- Parallels
-    Pair : Task h a -> Task h b -> Task h (a, b)
-    Done : t -> Task h t
+    Pair : Task h a -> Task h b -> Task h (PAIR a b)
+    Done : typeOf t -> Task h t
     Choose : Task h t -> Task h t -> Task h t
     Fail : Task h t
     ---- Steps
-    Trans : (a -> t) -> Task h a -> Task h t
-    Step : Task h a -> (a -> Task h t) -> Task h t
+    Trans : (typeOf a -> typeOf t) -> Task h a -> Task h t
+    Step : Task h a -> (typeOf a -> Task h t) -> Task h t
     ---- Asserts
-    Assert : Bool -> Task h Bool
+    Assert : Bool -> Task h (PRIM BOOL)
     ---- Stores
-    -- Share : (Basic t) => t -> Task h (Ref h t)
-    Assign : (Basic a) => a -> Ref h a -> Task h ()
+    -- Share : IsBasic t => t -> Task h (Ref h t)
+    Assign : IsBasic a => typeOf a -> typeOf (REF h a) -> Task h UNIT
 
   public export
-  data Editor : (h : Heap) -> (t : Type) -> Type where
+  data Editor : (h : Heap) -> (t : Ty) -> Type where
     ---- Owned
-    Enter : (Basic t) => Editor h t
-    Update : (Basic t) => t -> Editor h t
-    View : (Basic t) => t -> Editor h t
+    Enter : IsBasic t => Editor h t
+    Update : IsBasic t => typeOf t -> Editor h t
+    View : IsBasic t => typeOf t -> Editor h t
     Select : List (Label, Task h t) -> Editor h t
     ---- Shared
-    Change : (Basic t) => Ref h t -> Editor h t
-    Watch : (Basic t) => Ref h t -> Editor h t
+    Change : IsBasic t => typeOf (REF h t) -> Editor h t
+    Watch : IsBasic t => typeOf (REF h t) -> Editor h t
 
 ---- Inputs & Options ----------------------------------------------------------
 
+---- Concrete inputs
+
 public export
 data Concrete : Type where
-  AConcrete : Basic b => b -> Concrete
+  AConcrete : IsBasic b => typeOf b -> Concrete
+
+---- Dummy inputs
 
 public export
 data Dummy : Type where
-  ADummy : (b : Type) -> Basic b => Dummy
+  ADummy : (b : Ty) -> IsBasic b => Dummy
+
+export
+Eq Dummy where
+  (==) (ADummy a) (ADummy b) with (decEq a b)
+    (==) (ADummy a) (ADummy a) | (Yes Refl)  = True
+    (==) (ADummy a) (ADummy b) | (No contra) = False
+
+---- Input actions
 
 public export
 data Input k
@@ -100,6 +86,14 @@ ISelect n l = IOption (Named n) l
 public export
 IPreselect : Label -> Input b
 IPreselect l = IOption Unnamed l
+
+export
+Eq k => Eq (Input k) where
+  (==) (IEnter i x)  (IEnter i' x')  = i == i' && x == x'
+  (==) (IOption n l) (IOption n' l') = n == n' && l == l'
+  (==) _             _               = False
+
+---- Options
 
 public export
 data Option

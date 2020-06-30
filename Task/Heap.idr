@@ -1,7 +1,39 @@
 module Task.Heap
 
+import Decidable.Equality
+
 %default total
 
+---- Heaps ---------------------------------------------------------------------
+
+||| Heap shape
+public export
+data Heap
+  ||| Single integer
+  = Single
+
+export
+DecEq Heap where
+  decEq (Single) (Single) = Yes Refl
+
+||| References into the heap
+public export
+data Ref : Heap -> Type -> Type where
+  ||| Location of single integer
+  Loc : Ref Single Int
+
+||| Concrete heap of certain shape
+export
+data State : Heap -> Type where
+  ||| Value of single integer
+  Saved : Int -> State Single
+
+export
+read : Ref h t -> State h -> t
+read Loc (Saved x) = x
+
+
+{-
 ---- Types ---------------------------------------------------------------------
 
 ||| The shape of a heap.
@@ -55,3 +87,4 @@ write : Ref t ts -> t -> Heap ts -> Heap ts
 write _         _ []        impossible
 write (Here)    y (_ :: xs) = y :: xs
 write (There l) y (x :: xs) = x :: write l y xs
+-}
