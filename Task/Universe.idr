@@ -13,6 +13,7 @@ interface DecEq t => Universe t where
 
 ---- Primitive types -----------------------------------------------------------
 
+public export
 data PrimTy
   = BOOL
   | INT
@@ -49,6 +50,7 @@ Universe PrimTy where
 
 ---- Normal types --------------------------------------------------------------
 
+public export
 data Ty
   = UNIT
   | PAIR Ty Ty
