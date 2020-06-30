@@ -1,6 +1,5 @@
 module Task.Syntax
 
-import Data.SortedMap
 -- import Task.Universe
 
 
@@ -53,7 +52,7 @@ mutual
   public export
   data Task : (h : Heap) -> (t : Type) -> Type where
     ---- Editors
-    Edit : Name -> Editor h t -> Task h t
+    Edit : {t : Type} -> Name -> Editor h t -> Task h t
     ---- Parallels
     Pair : Task h a -> Task h b -> Task h (a, b)
     Done : t -> Task h t
@@ -74,7 +73,38 @@ mutual
     Enter : (Basic t) => Editor h t
     Update : (Basic t) => t -> Editor h t
     View : (Basic t) => t -> Editor h t
-    Select : SortedMap Label (Task h t) -> Editor h t
+    Select : List (Label, Task h t) -> Editor h t
     ---- Shared
     Change : (Basic t) => Ref h t -> Editor h t
     Watch : (Basic t) => Ref h t -> Editor h t
+
+---- Inputs & Options ----------------------------------------------------------
+
+public export
+data Concrete : Type where
+  AConcrete : Basic b => b -> Concrete
+
+public export
+data Dummy : Type where
+  ADummy : (b : Type) -> Basic b => Dummy
+
+public export
+data Input k
+  = IEnter Nat k
+  | IOption Name Label
+
+public export
+ISelect : Nat -> Label -> Input b
+ISelect n l = IOption (Named n) l
+
+public export
+IPreselect : Label -> Input b
+IPreselect l = IOption Unnamed l
+
+public export
+data Option
+  = AOption Name Label
+
+export
+fromOption : Option -> Input b
+fromOption (AOption n l) = IOption n l
