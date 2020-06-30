@@ -2,7 +2,7 @@ module Task.Observe
 
 import Control.Monoidal
 import Control.Monad.State
-import Task
+import Task.Syntax
 
 ---- Values --------------------------------------------------------------------
 

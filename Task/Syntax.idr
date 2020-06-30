@@ -1,4 +1,4 @@
-module Task
+module Task.Syntax
 
 import Data.SortedMap
 -- import Task.Universe
@@ -16,16 +16,19 @@ Basic String where
 ---- Heaps ---------------------------------------------------------------------
 
 ||| Heap shape
+public export
 data Heap
   ||| Single integer
   = Single
 
 ||| References into the heap
+public export
 data Ref : Heap -> Type -> Type where
   ||| Location of single integer
   Loc : Ref Single Int
 
 ||| Concrete heap of certain shape
+export
 data State : Heap -> Type where
   ||| Value of single integer
   Saved : Int -> State Single
@@ -36,15 +39,18 @@ read Loc (Saved x) = x
 
 ---- Tasks ---------------------------------------------------------------------
 
+export
 Label : Type
 Label = String
 
+public export
 data Name
   = Unnamed
   | Named Nat
 
 mutual
 
+  public export
   data Task : (h : Heap) -> (t : Type) -> Type where
     ---- Editors
     Edit : Name -> Editor h t -> Task h t
@@ -62,6 +68,7 @@ mutual
     -- Share : (Basic t) => t -> Task h (Ref h t)
     Assign : (Basic a) => a -> Ref h a -> Task h ()
 
+  public export
   data Editor : (h : Heap) -> (t : Type) -> Type where
     ---- Owned
     Enter : (Basic t) => Editor h t
