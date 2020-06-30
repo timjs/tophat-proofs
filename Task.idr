@@ -1,7 +1,6 @@
 module Task
 
 -- import Task.Universe
-import Data.SortedMap
 
 
 ---- Basic types ---------------------------------------------------------------
@@ -15,17 +14,29 @@ Basic String where
 
 ---- Heaps ---------------------------------------------------------------------
 
+||| Heap shape
 data Heap
-  = GlobalHeap
+  ||| Single integer
+  = Single
 
-data Store : Heap -> Type -> Type where
-  Loc : Store h t
+||| References into the heap
+data Ref : Heap -> Type -> Type where
+  ||| Location of single integer
+  Loc : Ref Single Int
+
+||| Concrete heap of certain shape
+data State : Heap -> Type where
+  ||| Value of single integer
+  Saved : Int -> State Single
+
+export
+read : Ref h t -> State h -> t
+read Loc (Saved x) = x
 
 ---- Tasks ---------------------------------------------------------------------
 
 Label : Type
 Label = String
-
 
 data Name
   = Unnamed
@@ -44,16 +55,18 @@ mutual
     ---- Steps
     Trans : (a -> t) -> Task h a -> Task h t
     Step : Task h a -> (a -> Task h t) -> Task h t
+    ---- Asserts
+    Assert : Bool -> Task h Bool
     ---- Stores
-    Share : (Basic t) => t -> Task h (Store h t)
-    Assign : (Basic a) => a -> Store h a -> Task h ()
+    -- Share : (Basic t) => t -> Task h (Ref h t)
+    Assign : (Basic a) => a -> Ref h a -> Task h ()
 
   data Editor : (h : Heap) -> (t : Type) -> Type where
     ---- Owned
     Enter : (Basic t) => Editor h t
     Update : (Basic t) => t -> Editor h t
     View : (Basic t) => t -> Editor h t
-    Select : SortedMap Label (Task h t) -> Editor h t
+    Select : List (Label, Task h t) -> Editor h t
     ---- Shared
-    Change : (Basic t) => Store h t -> Editor h t
-    Watch : (Basic t) => Store h t -> Editor h t
+    Change : (Basic t) => Ref h t -> Editor h t
+    Watch : (Basic t) => Ref h t -> Editor h t
