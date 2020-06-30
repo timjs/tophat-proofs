@@ -15,10 +15,10 @@ Basic String where
 
 ---- Heaps ---------------------------------------------------------------------
 
-Heap : Type
-Heap = Type
+data Heap
+  = GlobalHeap
 
-data Store : Type -> Type -> Type where
+data Store : Heap -> Type -> Type where
   Loc : Store h t
 
 ---- Tasks ---------------------------------------------------------------------
