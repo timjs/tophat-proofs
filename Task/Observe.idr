@@ -1,37 +1,39 @@
 module Task.Observe
 
 import Control.Monoidal
-import Control.Monad.State
 import Data.List
 import Task.Syntax
 
+-- %default total
+
 ---- Values --------------------------------------------------------------------
 
-value' : MonadState (State h) m => Editor h a -> m (Maybe (typeOf a))
-value' (Enter)    = pure Nothing
-value' (Update b) = pure (Just b)
-value' (View b)   = pure (Just b)
-value' (Select _) = pure Nothing
-value' (Change l) = pure Just <*> gets (read l)
-value' (Watch l)  = pure Just <*> gets (read l)
+public export
+value' : Editor h a -> State h -> Maybe (typeOf a)
+value' (Enter)    _ = Nothing
+value' (Update b) _ = Just b
+value' (View b)   _ = Just b
+value' (Select _) _ = Nothing
+value' (Change l) s = Just (read l s)
+value' (Watch l)  s = Just (read l s)
 
-export
-value : MonadState (State h) m => Task h a -> m (Maybe (typeOf a))
-value (Edit Unnamed _)   = pure Nothing
-value (Edit (Named _) e) = value' e
-value (Trans f t)        = pure (map f) <*> value t
-value (Pair t1 t2)       = pure (<&>) <*> value t1 <*> value t2
-value (Done v)           = pure (Just v)
-value (Choose t1 t2)     = pure (<|>) <*> value t1 <*> value t2
-value (Fail)             = pure Nothing
-value (Step _ _)         = pure Nothing
-value (Assert b)         = pure (Just b)
--- value (Share b)          = pure (Just Loc)
-value (Assign _ _)       = pure (Just ())
+public export
+value : Task h a -> State h -> Maybe (typeOf a)
+value (Edit n e)         s = value' e s
+value (Trans f t)        s = map f (value t s)
+value (Pair t1 t2)       s = value t1 s <&> value t2 s
+value (Done v)           _ = Just v
+value (Choose t1 t2)     s = value t1 s <|> value t2 s
+value (Fail)             _ = Nothing
+value (Step _ _)         _ = Nothing
+value (Assert b)         _ = Just b
+-- value (Share b)          _ = (Just Loc)
+value (Assign _ _)       _ = Just ()
 
 ---- Failing -------------------------------------------------------------------
 
 mutual
+  public export
   failing' : Editor h a -> Bool
   failing' (Enter)     = False
   failing' (Update _)  = False
@@ -40,7 +42,7 @@ mutual
   failing' (Change _)  = False
   failing' (Watch _)   = False
 
-  export
+  public export
   failing : Task h a -> Bool
   failing (Edit _ e)     = failing' e
   failing (Trans _ t2)   = failing t2
@@ -55,22 +57,20 @@ mutual
 
 ---- Options -------------------------------------------------------------------
 
-options' : List (Label, Task h a) -> List Label
-options' = map fst . filter (not . failing . snd)
+public export
+labels : List (Label, Task h a) -> List Label
+labels = map fst . filter (not . failing . snd)
 
-export
+public export
 options : Task h a -> List Option
-options (Edit n (Select ts)) = map (AOption n) $ options' ts
+options (Edit n (Select ts)) = [ AOption n l | l <- labels ts ]
 options (Trans _ t2)         = options t2
 options (Step t1 _)          = options t1
 options (_)                  = []
 
 ---- Inputs --------------------------------------------------------------------
 
-infixl 1 #
-(#) : a -> (a -> b) -> b
-(#) x f = f x
-
+public export
 inputs' : {b : Ty} -> Editor h b -> List Dummy
 inputs' (Enter)    = [ADummy b]
 inputs' (Update _) = [ADummy b]
@@ -79,23 +79,18 @@ inputs' (Select _) = [] --NOTE: selections do not have `IEnter` actions and are 
 inputs' (Change _) = [ADummy b]
 inputs' (Watch _)  = []
 
-export
-inputs : MonadState (State h) m => Task h a -> m (List (Input Dummy))
-inputs (Edit Unnamed _)               = pure []
-inputs (Edit (Named n) (Select ts))   = options' ts # map (ISelect n) # pure
-inputs (Edit (Named n) e)             = inputs' e # map (IEnter n) # pure
-inputs (Trans _ t2)                   = inputs t2
-inputs (Pair t1 t2)                   = pure (++) <*> inputs t1 <*> inputs t2
-inputs (Done _)                       = pure []
-inputs (Choose t1 t2)                 = pure (++) <*> inputs t1 <*> inputs t2
-inputs (Fail)                         = pure []
-inputs (Step t1 e2)                   = pure (++) <*> inputs t1 <*> do
-                                          mv1 <- value t1
-                                          case mv1 of
-                                            Nothing => pure []
-                                            Just v1 => do
-                                              let t2 = e2 v1
-                                              options t2 # map fromOption # pure
-inputs (Assert _)                     = pure []
--- inputs (Share _)                      = pure []
-inputs (Assign _ _)                   = pure []
+public export
+inputs : Task h a -> State h -> List (Input Dummy)
+inputs (Edit n (Select ts))  _ = [ AInput n (ASelect l) | l <- labels ts ]
+inputs (Edit n e)            s = [ AInput n (AEnter d) | d <- inputs' e ]
+inputs (Trans _ t2)          s = inputs t2 s
+inputs (Pair t1 t2)          s = inputs t1 s ++ inputs t2 s
+inputs (Done _)              _ = []
+inputs (Choose t1 t2)        s = inputs t1 s ++ inputs t2 s
+inputs (Fail)                _ = []
+inputs (Step t1 e2)          s = inputs t1 s ++ case value t1 s of
+                                           Nothing => []
+                                           Just v1 => [ fromOption o | o <- options (e2 v1) ]
+inputs (Assert _)                    _ = []
+-- inputs (Share _)                     _ = []
+inputs (Assign _ _)                  _ = []
