@@ -7,21 +7,25 @@ infixl 6 <&
 infixl 6 &>
 
 public export
-interface Applicative f => Monoidal f where
+interface Functor f => Monoidal f where
   (<&>) : f a -> f b -> f (a, b)
-  (<&>) x y = pure (\x, y => (x, y)) <*> x <*> y
+  -- (<&>) x y = pure (\x, y => (x, y)) <*> x <*> y
 
   skip : f ()
-  skip = pure ()
+  -- skip = pure ()
 
-  (<&) : f a -> f b -> f a
-  (<&) x y = pure fst <*> x <&> y
+  -- (<&) : f a -> f b -> f a
+  -- (<&) x y = pure fst <*> x <&> y
 
-  (&>) : f a -> f b -> f b
-  (&>) x y = pure snd <*> x <&> y
+  -- (&>) : f a -> f b -> f b
+  -- (&>) x y = pure snd <*> x <&> y
 
 public export
-implementation Monoidal Maybe
+Monoidal Maybe where
+  Just x <&> Just y = Just (x, y)
+  _      <&> _      = Nothing
+
+  skip = Just ()
 
 public export
 implementation Monoidal (Either e)
