@@ -59,7 +59,7 @@ mutual
 
 public export
 labels : List (Label, Task h a) -> List Label
-labels = map fst . filter (not . failing . snd)
+labels ts = [ l | (l, t) <- ts, not (failing t) ] -- map fst . filter (not . failing . snd)
 
 public export
 options : Task h a -> List Option
