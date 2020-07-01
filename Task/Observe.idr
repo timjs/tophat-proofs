@@ -1,10 +1,10 @@
 module Task.Observe
 
-import Control.Monoidal
+import public Control.Monoidal
 import Data.List
 import Task.Syntax
 
--- %default total
+%default total
 
 ---- Values --------------------------------------------------------------------
 
@@ -38,7 +38,7 @@ mutual
   failing' (Enter)     = False
   failing' (Update _)  = False
   failing' (View _)    = False
-  failing' (Select ts) = all (failing . snd) ts
+  failing' (Select ts) = assert_total $ all (failing . snd) ts
   failing' (Change _)  = False
   failing' (Watch _)   = False
 
