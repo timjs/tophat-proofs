@@ -30,55 +30,52 @@ fail_no_inter : (t : Task h b) -> (s : State h) -> (failing t = True) -> (value 
 fail_no_inter (Edit n (Enter))     s Refl impossible
 fail_no_inter (Edit n (Update _))  s Refl impossible
 fail_no_inter (Edit n (View _))    s Refl impossible
-fail_no_inter (Edit n (Select ts)) s prf = ?fail_no_inter_r_4
+fail_no_inter (Edit n (Select ts)) s prf = ?fail_no_inter_r_4_rhs
 fail_no_inter (Edit n (Change _))  s Refl impossible
 fail_no_inter (Edit n (Watch _))   s Refl impossible
 fail_no_inter (Pair t1 t2)         s p_f12 with (failing t1 ?= True, failing t2 ?= True)
   fail_no_inter (Pair t1 t2)         s p_f12 | (Yes p_f1, Yes p_f2) with (fail_no_inter t1 s p_f1, fail_no_inter t2 s p_f2)
     fail_no_inter (Pair t1 t2)         s p_f12 | (Yes p_f1, Yes p_f2) | ((p_v1, p_i1), (p_v2, p_i2)) = rewrite p_v1 in
-                                                                                                        -- rewrite p_v2 in
-                                                                                                        rewrite p_i1 in
-                                                                                                        rewrite p_i2 in (Refl, Refl)
-  fail_no_inter (Pair t1 t2)         s p_f12 | (Yes p_f1, No  c_f2) = ?b_3
-  fail_no_inter (Pair t1 t2)         s p_f12 | (No  c_f1, Yes p_f2) = ?b_4
-  fail_no_inter (Pair t1 t2)         s p_f12 | (No  c_f1, No  c_f2) = ?b_5
-
-
-  -- fail_no_inter (Pair t1 t2)         s prf | (Yes failing1, Yes failing2) with (fail_no_inter t1 s failing1, fail_no_inter t2 s failing2)
-  --   fail_no_inter (Pair t1 t2)         s prf | (Yes failing1, Yes failing2) | ((value1, inputs1), x) = ?blub_1_rhs_1
-
-  -- fail_no_inter (Pair t1 t2)         s prf | (No contra) = ?blub_2
-
-
-  -- fail_no_inter (Pair t1 t2)         s Refl | False impossible
-  -- fail_no_inter (Pair t1 t2)         s prf  | True with (failing t2)
-  --   fail_no_inter (Pair t1 t2)         s prf  | True | False impossible
-  --   fail_no_inter (Pair t1 t2)         s Refl | True | True = let
-  --                                                               prfs = fail_no_inter t1 s ?blub
-  --                                                             in ?fail_no_inter_r_13_rhs_1_rhs_1
-
+                                                                                                       --> `rewrite p_v2` is not needed because of definiiton of `<&>`
+                                                                                                       rewrite p_i1 in
+                                                                                                       rewrite p_i2 in (Refl, Refl)
+  fail_no_inter (Pair t1 t2)         s p_f12 | (Yes p_f1, No no_f2) with (failing t2)
+    fail_no_inter (Pair t1 t2)         s p_f12 | (Yes p_f1, No no_f2) | True = absurd (no_f2 Refl)
+    fail_no_inter (Pair t1 t2)         s p_f12 | (Yes p_f1, No no_f2) | False with (failing t1)
+      fail_no_inter (Pair t1 t2)         s p_f12 | (Yes p_f1, No no_f2) | False | True = absurd p_f12
+      fail_no_inter (Pair t1 t2)         s p_f12 | (Yes p_f1, No no_f2) | False | False = absurd p_f12
+  fail_no_inter (Pair t1 t2)         s p_f12 | (No no_f1, Yes p_f2) with (failing t1)
+    fail_no_inter (Pair t1 t2)         s p_f12 | (No no_f1, Yes p_f2) | True = absurd (no_f1 Refl)
+    fail_no_inter (Pair t1 t2)         s p_f12 | (No no_f1, Yes p_f2) | False with (failing t2)
+      fail_no_inter (Pair t1 t2)         s p_f12 | (No no_f1, Yes p_f2) | False | True = absurd p_f12
+      fail_no_inter (Pair t1 t2)         s p_f12 | (No no_f1, Yes p_f2) | False | False = absurd p_f12
+  fail_no_inter (Pair t1 t2)         s p_f12 | (No no_f1, No no_f2) with (failing t1)
+    fail_no_inter (Pair t1 t2)         s p_f12 | (No no_f1, No no_f2) | True = absurd (no_f1 Refl)
+    fail_no_inter (Pair t1 t2)         s p_f12 | (No no_f1, No no_f2) | False = absurd p_f12
 fail_no_inter (Done v)             s Refl impossible
-fail_no_inter (Choose t1 t2)       s prf = ?fail_no_inter_r_8
+fail_no_inter (Choose t1 t2)       s prf with (failing t1 ?= True, failing t2 ?= True)
+  fail_no_inter (Choose t1 t2)       s prf | (Yes p_f1, Yes p_f2) with (fail_no_inter t1 s p_f1, fail_no_inter t2 s p_f2)
+    fail_no_inter (Choose t1 t2)       s prf | (Yes p_f1, Yes p_f2) | ((p_v1, p_i1), (p_v2, p_i2)) = rewrite p_v1 in
+                                                                                                     rewrite p_v2 in
+                                                                                                     rewrite p_i1 in
+                                                                                                     rewrite p_i2 in (Refl, Refl)
+  --> Use lemma for this part as it is the same as for `Pair`?
+  fail_no_inter (Choose t1 t2)       s p_f12 | (Yes p_f1, No no_f2) with (failing t2)
+    fail_no_inter (Choose t1 t2)       s p_f12 | (Yes p_f1, No no_f2) | True = absurd (no_f2 Refl)
+    fail_no_inter (Choose t1 t2)       s p_f12 | (Yes p_f1, No no_f2) | False with (failing t1)
+      fail_no_inter (Choose t1 t2)       s p_f12 | (Yes p_f1, No no_f2) | False | True = absurd p_f12
+      fail_no_inter (Choose t1 t2)       s p_f12 | (Yes p_f1, No no_f2) | False | False = absurd p_f12
+  fail_no_inter (Choose t1 t2)       s p_f12 | (No no_f1, Yes p_f2) with (failing t1)
+    fail_no_inter (Choose t1 t2)       s p_f12 | (No no_f1, Yes p_f2) | True = absurd (no_f1 Refl)
+    fail_no_inter (Choose t1 t2)       s p_f12 | (No no_f1, Yes p_f2) | False = absurd p_f12
+  fail_no_inter (Choose t1 t2)       s p_f12 | (No no_f1, No no_f2) with (failing t1)
+    fail_no_inter (Choose t1 t2)       s p_f12 | (No no_f1, No no_f2) | True = absurd (no_f1 Refl)
+    fail_no_inter (Choose t1 t2)       s p_f12 | (No no_f1, No no_f2) | False = absurd p_f12
 fail_no_inter Fail                 s Refl = (Refl, Refl)
--- fail_no_inter (Trans f t)          s prf with (failing t, value t s, inputs t s)
---   fail_no_inter (Trans f t)          s prf | (True, Nothing, []) = ?h_rhs_6
---   fail_no_inter (Trans f t)          s prf | (True, Nothing, (x :: xs)) = ?h_rhs_7
---   fail_no_inter (Trans f t)          s prf | (False, Nothing, []) = ?h_rhs_8
---   fail_no_inter (Trans f t)          s prf | (False, Nothing, (x :: xs)) = ?h_rhs_9
---   fail_no_inter (Trans f t)          s prf | (x, (Just y), z) = ?h_rhs_3
-fail_no_inter (Trans f t)          s prf with (failing t)
-  fail_no_inter (Trans f t)          s Refl | False impossible
-  fail_no_inter (Trans f t)          s Refl | True with (value t s)
-    fail_no_inter (Trans f t)          s Refl | True | Nothing with (inputs t s)
-      fail_no_inter (Trans f t)          s Refl | True | Nothing | [] = (Refl, Refl)
-      fail_no_inter (Trans f t)          s Refl | True | Nothing | (x :: xs) = (Refl, ?h_1_rhs_2)
-    fail_no_inter (Trans f t)          s Refl | True | (Just x) with (inputs t s)
-      fail_no_inter (Trans f t)          s Refl | True | (Just x) | [] = (?h_2_rhs_1, Refl)
-      fail_no_inter (Trans f t)          s Refl | True | (Just x) | (y :: xs) = ?h_2_rhs_2
-
-    -- fail_no_inter (Trans f t)          s Refl | True | [] = ?fail_no_inter_r_14_rhs_3_rhs_1
-    -- fail_no_inter (Trans f t)          s Refl | True | (x :: xs) = ?fail_no_inter_r_14_rhs_3_rhs_2
-fail_no_inter (Step t c)           s prf = ?fail_no_inter_r_10
+fail_no_inter (Trans f t2)         s prf with (fail_no_inter t2 s prf)
+  fail_no_inter (Trans f t2)         s prf | (p_v2, p_i2) = (rewrite p_v2 in Refl, p_i2)
+fail_no_inter (Step t1 c)          s prf with (fail_no_inter t1 s prf)
+  fail_no_inter (Step t1 c)          s prf | (p_v1, p_i1) = (Refl, rewrite p_i1 in rewrite p_v1 in Refl)
 fail_no_inter (Assert y)           s Refl impossible
 fail_no_inter (Assign v r)         s Refl impossible
 
