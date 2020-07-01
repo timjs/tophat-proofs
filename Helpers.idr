@@ -33,6 +33,14 @@ public export
 iff_sym : (a <-> b) -> (b <-> a)
 iff_sym (p_a, p_b) = (p_b, p_a)
 
+public export
+Uninhabited (True = False) where
+  uninhabited Refl impossible
+
+public export
+Uninhabited (False = True) where
+  uninhabited Refl impossible
+
 ---- Oh So True ----------------------------------------------------------------
 --FIXME: here because not yet in Data.So in 0.2.0...
 
