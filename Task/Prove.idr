@@ -11,20 +11,27 @@ import Task.Observe
 ---- Interaction ---------------------------------------------------------------
 
 no_inter_fail : (t : Task h b) -> (s : State h) -> (value t s = Nothing) /\ (inputs t s = []) -> (failing t = True)
-no_inter_fail (Edit n (Enter))     s prfs = ?no_inter_fail_r_1
-no_inter_fail (Edit n (Update _))  s prfs = ?no_inter_fail_r_2
-no_inter_fail (Edit n (View _))    s prfs = ?no_inter_fail_r_3
-no_inter_fail (Edit n (Select ts)) s prfs = ?no_inter_fail_r_4
-no_inter_fail (Edit n (Change _))  s prfs = ?no_inter_fail_r_5
-no_inter_fail (Edit n (Watch _))   s prfs = ?no_inter_fail_r_6
-no_inter_fail (Pair t1 t2)         s prfs = ?no_inter_fail_r_7
-no_inter_fail (Done v)             s prfs = ?no_inter_fail_r_8
-no_inter_fail (Choose t1 t2)       s prfs = ?no_inter_fail_r_9
-no_inter_fail (Fail)               s prfs = ?no_inter_fail_r_10
-no_inter_fail (Trans f t)          s prfs = ?no_inter_fail_r_11
-no_inter_fail (Step t c)           s prfs = ?no_inter_fail_r_12
-no_inter_fail (Assert z)           s prfs = ?no_inter_fail_r_13
-no_inter_fail (Assign v r)         s prfs = ?no_inter_fail_r_14
+no_inter_fail (Edit n (Enter))     s (p_v, p_i) = absurd p_i
+no_inter_fail (Edit n (Update _))  s (p_v, p_i) = absurd p_v
+no_inter_fail (Edit n (View _))    s (p_v, p_i) = absurd p_v
+no_inter_fail (Edit n (Select ts)) s (p_v, p_i) = ?no_inter_fail_r_4
+no_inter_fail (Edit n (Change _))  s (p_v, p_i) = absurd p_v
+no_inter_fail (Edit n (Watch _))   s (p_v, p_i) = absurd p_v
+no_inter_fail (Pair t1 t2)         s (p_v, p_i) = ?no_inter_fail_r_7
+no_inter_fail (Done v)             s (p_v, p_i) = absurd p_v
+no_inter_fail (Choose t1 t2)       s (p_v, p_i) = ?no_inter_fail_r_9
+no_inter_fail (Fail)               s (p_v, p_i) = Refl
+no_inter_fail (Trans f t)          s (p_v, p_i) = ?no_inter_fail_r_11
+no_inter_fail (Step t c)           s (p_v, p_i) with (inputs t s ?= [])
+  no_inter_fail (Step t c)           s (p_v, p_i) | Yes p_il = ?no_inter_fail_r_12_rhs
+  no_inter_fail (Step t c)           s (p_v, p_i) | No no_il = ?no_inter_fail_r_12_rhs2
+
+
+
+no_inter_fail (Assert z)           s (p_v, p_i) = absurd p_v
+no_inter_fail (Assign v r)         s (p_v, p_i) = absurd p_v
+
+
 
 fail_no_inter : (t : Task h b) -> (s : State h) -> (failing t = True) -> (value t s = Nothing) /\ (inputs t s = [])
 fail_no_inter (Edit n (Enter))     s Refl impossible
