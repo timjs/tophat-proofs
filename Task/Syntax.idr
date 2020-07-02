@@ -1,5 +1,6 @@
 module Task.Syntax
 
+import Helpers
 import public Task.Universe
 
 %default total
@@ -20,6 +21,21 @@ Eq Name where
   (==) (Unnamed) (Unnamed)  = True
   (==) (Named i) (Named i') = i == i'
   (==) _         _          = False
+
+Uninhabited (Unnamed = Named i) where
+  uninhabited Refl impossible
+
+named_inj : (Named i = Named j) -> (i = j)
+named_inj Refl = Refl
+
+public export
+DecEq Name where
+  decEq (Unnamed) (Unnamed)  = Yes Refl
+  decEq (Named i) (Named i') with (i ?= i')
+    decEq (Named i) (Named i)  | Yes Refl = Yes Refl
+    decEq (Named i) (Named i') | No contra = No (contra . named_inj)
+  decEq (Unnamed) (Named i)  = No absurd
+  decEq (Named i) (Unnamed)  = No (negEqSym absurd)
 
 mutual
 
@@ -58,19 +74,28 @@ mutual
 
 public export
 data Concrete : Type where
-  AConcrete : {b : Ty} -> IsBasic b => Eq (typeOf b) => (v : typeOf b) -> Concrete
+  AConcrete : {b : Ty} -> (v : typeOf b) -> Concrete
 
 ---- Dummy inputs
 
 public export
 data Dummy : Type where
-  ADummy : (b : Ty) -> IsBasic b => Dummy
+  ADummy : (b : Ty) -> Dummy
 
 public export
 Eq Dummy where
-  (==) (ADummy a) (ADummy b) with (decEq a b)
-    (==) (ADummy a) (ADummy a) | (Yes Refl)  = True
-    (==) (ADummy a) (ADummy b) | (No contra) = False
+  (==) (ADummy a) (ADummy b) with (a ?= b)
+    (==) (ADummy a) (ADummy a) | Yes Refl  = True
+    (==) (ADummy a) (ADummy b) | No contra = False
+
+dummy_inj : (ADummy a = ADummy x) -> (a = x)
+dummy_inj Refl = Refl
+
+public export
+DecEq Dummy where
+  decEq (ADummy a) (ADummy b) with (a ?= b)
+    decEq (ADummy a) (ADummy a) | Yes Refl = Yes Refl
+    decEq (ADummy a) (ADummy b) | No contra = No (contra . dummy_inj)
 
 ---- Input actions
 
@@ -95,6 +120,10 @@ public export
 Eq k => Eq (Input k) where
   (==) (AInput n a)  (AInput n' a')  = n == n' && a == a'
   (==) _             _               = False
+
+public export
+DecEq k => DecEq (Input k) where
+  decEq (AInput n a) (AInput n' a') = ?h_1
 
 ---- Options
 
