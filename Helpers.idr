@@ -33,12 +33,22 @@ public export
 iff_sym : (a <-> b) -> (b <-> a)
 iff_sym (p_a, p_b) = (p_b, p_a)
 
+---- Habited or Unhabited ------------------------------------------------------
+
 public export
 Uninhabited (True = False) where
   uninhabited Refl impossible
 
 public export
 Uninhabited (False = True) where
+  uninhabited Refl impossible
+
+public export
+Uninhabited (Just x = Nothing) where
+  uninhabited Refl impossible
+
+public export
+Uninhabited (Nothing = Just y) where
   uninhabited Refl impossible
 
 ---- Oh So True ----------------------------------------------------------------
