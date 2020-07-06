@@ -59,7 +59,8 @@ mutual
 
 public export
 labels : List (Label, Task h a) -> List Label
-labels ts = [ l | (l, t) <- ts, not (failing t) ] -- map fst . filter (not . failing . snd)
+labels = map fst . filter (not . failing . snd)
+  -- [ l | (l, t) <- ts, not (failing t) ]
 
 public export
 options : Task h a -> List Option
@@ -82,6 +83,7 @@ inputs' (Watch _)  = []
 public export
 inputs : Task h a -> State h -> List (Input Dummy)
 inputs (Edit n (Select ts))  _ = [ AInput n (ASelect l) | l <- labels ts ]
+  -- map (\l => AInput n (ASelect l)) (labels ts)
 inputs (Edit n e)            s = [ AInput n (AEnter d) | d <- inputs' e ]
 inputs (Trans _ t2)          s = inputs t2 s
 inputs (Pair t1 t2)          s = inputs t1 s ++ inputs t2 s
