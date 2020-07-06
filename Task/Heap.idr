@@ -32,6 +32,9 @@ export
 read : Ref h t -> State h -> t
 read Loc (Saved x) = x
 
+export
+write : t -> Ref h t -> State h -> State h
+write y Loc (Saved x) = Saved y
 
 {-
 ---- Types ---------------------------------------------------------------------
