@@ -65,8 +65,9 @@ mutual
     View : IsBasic a => (v : typeOf a) -> Editor h a
     Select : (ts : List (Label, Task h a)) -> Editor h a
     ---- Shared
-    Change : IsBasic a => (r : typeOf (REF h a)) -> Editor h a
-    Watch : IsBasic a => (r : typeOf (REF h a)) -> Editor h a
+    --> Need to store `b` for `watching`
+    Change : {b : Ty} -> IsBasic b => (r : typeOf (REF h b)) -> Editor h b
+    Watch : {b : Ty} -> IsBasic b => (r : typeOf (REF h b)) -> Editor h b
 
 ---- Inputs & Options ----------------------------------------------------------
 
@@ -108,7 +109,7 @@ public export
 Eq k => Eq (Action k) where
   (==) (AEnter x)  (AEnter x')  = x == x'
   (==) (ASelect l) (ASelect l') = l == l'
-  (==) _             _               = False
+  (==) _           _            = False
 
 ---- Full inputs
 

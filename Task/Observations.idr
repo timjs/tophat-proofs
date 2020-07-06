@@ -55,6 +55,28 @@ mutual
   -- failing (Share _)      = False
   failing (Assign _ _)   = False
 
+---- Watching ------------------------------------------------------------------
+
+watching' : Editor h a -> List (t : Ty ** Ref h (typeOf t))
+watching' (Enter)        = []
+watching' (Update _)     = []
+watching' (View _)       = []
+watching' (Select _)     = []
+watching' (Change {b} l) = [(b ** l)]
+watching' (Watch {b} l)  = [(b ** l)]
+
+watching : Task h a -> List (t : Ty ** Ref h (typeOf t))
+watching (Edit _ e)     = watching' e
+watching (Trans _ t2)   = watching t2
+watching (Pair t1 t2)   = watching t1 ++ watching t2
+watching (Done _)       = []
+watching (Choose t1 t2) = watching t1 ++ watching t2
+watching (Fail)         = []
+watching (Step t1 _)    = watching t1
+watching (Assert _)     = []
+-- watching (Share _)      = []
+watching (Assign _ _)   = []
+
 ---- Options -------------------------------------------------------------------
 
 public export
