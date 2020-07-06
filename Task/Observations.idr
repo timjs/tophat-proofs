@@ -1,4 +1,4 @@
-module Task.Observe
+module Task.Observations
 
 import public Control.Monoidal
 import Data.List
@@ -59,8 +59,7 @@ mutual
 
 public export
 labels : List (Label, Task h a) -> List Label
-labels = map fst . filter (not . failing . snd)
-  -- [ l | (l, t) <- ts, not (failing t) ]
+labels = map fst . filter (not . failing . snd) --> [ l | (l, t) <- _, not (failing t) ] but using this in proofs is tedious
 
 public export
 options : Task h a -> List Option
@@ -76,14 +75,13 @@ inputs' : {b : Ty} -> Editor h b -> List Dummy
 inputs' (Enter)    = [ADummy b]
 inputs' (Update _) = [ADummy b]
 inputs' (View _)   = []
-inputs' (Select _) = [] --NOTE: selections do not have `IEnter` actions and are handles separately
+inputs' (Select _) = [] --> selections do not have `IEnter` actions and are handles separately
 inputs' (Change _) = [ADummy b]
 inputs' (Watch _)  = []
 
 public export
 inputs : Task h a -> State h -> List (Input Dummy)
 inputs (Edit n (Select ts))  _ = [ AInput n (ASelect l) | l <- labels ts ]
-  -- map (\l => AInput n (ASelect l)) (labels ts)
 inputs (Edit n e)            s = [ AInput n (AEnter d) | d <- inputs' e ]
 inputs (Trans _ t2)          s = inputs t2 s
 inputs (Pair t1 t2)          s = inputs t1 s ++ inputs t2 s
@@ -91,8 +89,8 @@ inputs (Done _)              _ = []
 inputs (Choose t1 t2)        s = inputs t1 s ++ inputs t2 s
 inputs (Fail)                _ = []
 inputs (Step t1 e2)          s = inputs t1 s ++ case value t1 s of
-                                           Nothing => []
-                                           Just v1 => [ fromOption o | o <- options (e2 v1) ]
-inputs (Assert _)                    _ = []
--- inputs (Share _)                     _ = []
-inputs (Assign _ _)                  _ = []
+                                   Nothing => []
+                                   Just v1 => [ fromOption o | o <- options (e2 v1) ]
+inputs (Assert _)            _ = []
+-- inputs (Share _)            _ = []
+inputs (Assign _ _)          _ = []

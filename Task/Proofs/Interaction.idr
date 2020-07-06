@@ -1,11 +1,11 @@
-module Task.Prove
+module Task.Proofs.Interaction
 
 import Helpers
 import Data.Maybe
 import Data.List.Quantifiers
 import Task.Syntax
-import Task.Observe
-import Task.Lemmas
+import Task.Observations
+import Task.Proofs.Lemmas
 
 %default total
 

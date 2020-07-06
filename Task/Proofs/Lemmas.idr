@@ -1,10 +1,10 @@
-module Task.Lemmas
+module Task.Proofs.Lemmas
 
 import Helpers
 import Data.List
 import Data.List.Quantifiers
 import Task.Syntax
-import Task.Observe
+import Task.Observations
 
 ---- On evidence ---------------------------------------------------------------
 
