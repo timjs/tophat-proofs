@@ -88,6 +88,36 @@ normalise t = case t of
 
 ---- Handling ------------------------------------------------------------------
 
+handle' :
+  MonadState (State h) m =>
+  Concrete ->
+  Editor h a ->
+  m (Either NotApplicable (Editor h a))
+{-
+handle' c@(Concrete b') t = case t of
+  Enter
+    | Just Refl <- b' ~: beta => okay $ Update b'
+    | otherwise => throw $ CouldNotChangeVal (SomeTypeRep beta) (someTypeOf b')
+    where
+      beta = typeRep :: TypeRep a
+  Update b
+    -- NOTE: Here we check if `b` and `b'` have the same type.
+    -- If this is the case, it would be inhabited by `Refl :: a :~: b`, where `b` is the type of the value inside `Update`.
+    | Just Refl <- b ~= b' => okay $ Update b'
+    | otherwise => throw $ CouldNotChangeVal (someTypeOf b) (someTypeOf b')
+  Change s@(Store _ r)
+    -- NOTE: As in the `Update` case above, we check for type equality.
+    | Just Refl <- b' ~: beta => do
+      Store.write b' s
+      tell [pack r]
+      okay $ Change s
+    | otherwise => throw $ CouldNotChangeRef (someTypeOf r) (someTypeOf b')
+    where
+      beta = typeRep :: TypeRep a
+  ---- Rest
+  _ => throw $ CouldNotHandleValue c
+    -}
+
 handle :
   MonadState (State h) m =>
   Task h a ->
@@ -146,36 +176,6 @@ handle t i = case t of
   _ => throw $ CouldNotHandle i
       -}
 
-handle' :
-  MonadState (State h) m =>
-  Concrete ->
-  Editor h a ->
-  m (Either NotApplicable (Editor h a))
-{-
-handle' c@(Concrete b') t = case t of
-  Enter
-    | Just Refl <- b' ~: beta => okay $ Update b'
-    | otherwise => throw $ CouldNotChangeVal (SomeTypeRep beta) (someTypeOf b')
-    where
-      beta = typeRep :: TypeRep a
-  Update b
-    -- NOTE: Here we check if `b` and `b'` have the same type.
-    -- If this is the case, it would be inhabited by `Refl :: a :~: b`, where `b` is the type of the value inside `Update`.
-    | Just Refl <- b ~= b' => okay $ Update b'
-    | otherwise => throw $ CouldNotChangeVal (someTypeOf b) (someTypeOf b')
-  Change s@(Store _ r)
-    -- NOTE: As in the `Update` case above, we check for type equality.
-    | Just Refl <- b' ~: beta => do
-      Store.write b' s
-      tell [pack r]
-      okay $ Change s
-    | otherwise => throw $ CouldNotChangeRef (someTypeOf r) (someTypeOf b')
-    where
-      beta = typeRep :: TypeRep a
-  ---- Rest
-  _ => throw $ CouldNotHandleValue c
-    -}
-
 ---- Fixation ------------------------------------------------------------------
 
 fixate :
@@ -201,30 +201,29 @@ fixate t = do
       -- log Info $ DidNotStabilise (length ds) (length ws) (length os)
       -- fixate $ pure t'' -- F-Loop
 
-    {-
 ---- Initialisation ------------------------------------------------------------
 
-initialise ::
-  Members '[Log Steps, Supply Nat, Alloc h, Read h, Write h] r =>
-  Task h a =>
-  Sem r (Task h a)
+initialise :
+  MonadSupply Nat m =>
+  MonadState (State h) m =>
+  Task h a ->
+  m (Task h a)
 initialise t = do
-  log Info $ DidStart (display t)
-  fixate (pure t)
+  -- log Info $ DidStart (display t)
+  fixate t
 
 ---- Interaction ---------------------------------------------------------------
 
-interact ::
-  Members '[Log Steps, Log NotApplicable, Supply Nat, Alloc h, Read h, Write h] r =>
-  Input Concrete =>
-  Task h a =>
-  Sem r (Task h a)
+interact :
+  MonadSupply Nat m =>
+  MonadState (State h) m =>
+  Input Concrete ->
+  Task h a ->
+  m (Task h a)
 interact i t = do
-  xt <- handle t i |> runWriter |> runError
+  xt <- handle t i
   case xt of
     Left e => do
-      log Warning e
+      -- log Warning e
       pure t
-    Right (_, t') => fixate $ pure t' --XXX: forget delta?!
-
-    -}
+    Right t' => fixate t'
