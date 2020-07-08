@@ -45,31 +45,31 @@ mutual
   public export
   data Task : (h : Heap) -> (a : Type) -> Type where
     ---- Editors
-    Edit : (n : Name) -> (e : Editor h a) -> Task h a
+    Edit   : (n : Name) -> (e : Editor h a) -> Task h a
     ---- Parallels
-    Pair : (t1 : Task h a) -> (t2 : Task h b) -> Task h (a, b)
-    Done : (v : a) -> Task h a
+    Pair   : (t1 : Task h a) -> (t2 : Task h b) -> Task h (a, b)
+    Done   : (v : a) -> Task h a
     Choose : (t1 : Task h a) -> (t2 : Task h a) -> Task h a
-    Fail : Task h a
+    Fail   : Task h a
     ---- Steps
-    Trans : (f : a' -> a) -> (t : Task h a') -> Task h a
-    Step : (t : Task h a') -> (c : a' -> Task h a) -> Task h a
+    Trans  : (f : a' -> a) -> (t : Task h a') -> Task h a
+    Step   : (t : Task h a') -> (c : a' -> Task h a) -> Task h a
     ---- Asserts
     Assert : (p : Bool) -> Task h Bool
     ---- Stores
-    -- Share : IsBasic a => a -> Task h (Ref h a)
-    Assign : IsBasic a => (v : a) -> (r : Ref h a) -> Task h ()
+    -- Share : {auto ok : IsBasic a} -> a -> Task h (Ref h a)
+    Assign : {auto ok : IsBasic a} -> (v : a) -> (r : Ref h a) -> Task h ()
 
   public export
   data Editor : (h : Heap) -> (a : Type) -> Type where
     ---- Owned
-    Enter : {a : Type} -> IsBasic a => Editor h a
-    Update : {a : Type} -> IsBasic a => (v : a) -> Editor h a
-    View : {a : Type} -> IsBasic a => (v : a) -> Editor h a
+    Enter  : {a : Type} -> {auto ok : IsBasic a} -> Editor h a
+    Update : {a : Type} -> {auto ok : IsBasic a} -> (v : a) -> Editor h a
+    View   : {a : Type} -> {auto ok : IsBasic a} -> (v : a) -> Editor h a
     Select : (ts : List (Label, Task h a)) -> Editor h a
     ---- Shared
-    Change : {a : Type} -> IsBasic a => (r : Ref h a) -> Editor h a
-    Watch : {a : Type} -> IsBasic a => (r : Ref h a) -> Editor h a
+    Change : {a : Type} -> {auto ok : IsBasic a} -> (r : Ref h a) -> Editor h a
+    Watch  : {a : Type} -> {auto ok : IsBasic a} -> (r : Ref h a) -> Editor h a
 
 ---- Inputs & Options ----------------------------------------------------------
 
@@ -77,28 +77,32 @@ mutual
 
 public export
 data Concrete : Type where
-  AConcrete : IsBasic t => (v : t) -> Concrete
+  AConcrete : {a' : Type} -> {auto ok' : IsBasic a'} -> (v : a') -> Concrete
 
 ---- Symbolic inputs
 
 public export
 data Symbolic : Type where
-  ASymbolic : (t : Type) -> {auto p : IsBasic t} -> Symbolic
+  ASymbolic : (a' : Type) -> {auto ok' : IsBasic a'} -> Symbolic
 
 public export
 Eq Symbolic where
-  (==) (ASymbolic a {p=p_a}) (ASymbolic b {p=p_b}) with (decInj p_a p_b)
-    (==) (ASymbolic a {p=p_a}) (ASymbolic a {p=p_b}) | Yes Refl = True
-    (==) (ASymbolic a {p=p_a}) (ASymbolic b {p=p_b}) | No _ = False
+  (==) (ASymbolic a {ok'=ok_a}) (ASymbolic b {ok'=ok_b}) with (decBasic ok_a ok_b)
+    (==) (ASymbolic a {ok'=ok_a}) (ASymbolic a {ok'=ok_a}) | Yes Refl = True
+    (==) (ASymbolic a {ok'=ok_a}) (ASymbolic b {ok'=ok_b}) | No _ = False
 
 symbolicInjective : IsBasic a => IsBasic x => (ASymbolic a = ASymbolic x) -> (a = x)
 symbolicInjective Refl = Refl
 
+symbolicCong : {auto ok_a : IsBasic a} -> {auto ok_b : IsBasic b} -> (ASymbolic a = ASymbolic b) -> (ok_a = ok_b)
+symbolicCong {ok_a=ok} {ok_b=ok} Refl = Refl
+--> This should be generalised...
+
 public export
 DecEq Symbolic where
-  decEq (ASymbolic a {p=p_a}) (ASymbolic b {p=p_b}) with (decInj p_a p_b)
-    decEq (ASymbolic a {p=p_a}) (ASymbolic a {p=p_b}) | Yes Refl = Yes ?symbolic_decEq_yes
-    decEq (ASymbolic a {p=p_a}) (ASymbolic b {p=p_b}) | No cntr = No (cntr . symbolicInjective)
+  decEq (ASymbolic a {ok'=ok_a}) (ASymbolic b {ok'=ok_b}) with (decBasic ok_a ok_b)
+    decEq (ASymbolic a {ok'=ok_a}) (ASymbolic a {ok'=ok_a}) | Yes Refl = Yes Refl
+    decEq (ASymbolic a {ok'=ok_a}) (ASymbolic b {ok'=ok_b}) | No cntr = No (cntr . symbolicCong)
 
 ---- Input actions
 
