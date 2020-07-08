@@ -1,5 +1,6 @@
 module Task.Semantics
 
+import Helpers
 import Control.Monad.State
 import Control.Monad.Supply
 import Data.List
@@ -93,30 +94,16 @@ handle' :
   Concrete ->
   Editor h a ->
   m (Either NotApplicable (Editor h a))
-{-
-handle' c@(Concrete b') t = case t of
-  Enter
-    | Just Refl <- b' ~: beta => okay $ Update b'
-    | otherwise => throw $ CouldNotChangeVal (SomeTypeRep beta) (someTypeOf b')
-    where
-      beta = typeRep :: TypeRep a
-  Update b
-    -- NOTE: Here we check if `b` and `b'` have the same type.
-    -- If this is the case, it would be inhabited by `Refl :: a :~: b`, where `b` is the type of the value inside `Update`.
-    | Just Refl <- b ~= b' => okay $ Update b'
-    | otherwise => throw $ CouldNotChangeVal (someTypeOf b) (someTypeOf b')
-  Change s@(Store _ r)
-    -- NOTE: As in the `Update` case above, we check for type equality.
-    | Just Refl <- b' ~: beta => do
-      Store.write b' s
-      tell [pack r]
-      okay $ Change s
-    | otherwise => throw $ CouldNotChangeRef (someTypeOf r) (someTypeOf b')
-    where
-      beta = typeRep :: TypeRep a
-  ---- Rest
-  _ => throw $ CouldNotHandleValue c
-    -}
+handle' (AConcrete {a'} {ok'} v') (Enter {a} {ok}) with (decBasic ok' ok)
+  handle' (AConcrete {a'=a } {ok'=ok } v') (Enter {a} {ok}) | Yes Refl = okay $ Update v'
+  handle' (AConcrete {a'=a'} {ok'=ok'} v') (Enter {a} {ok}) | No _ = throw $ CouldNotChangeVal a' a
+handle' (AConcrete {a'} {ok'} v') (Update {a} {ok} v) with (decBasic ok' ok)
+  handle' (AConcrete {a'=a } {ok'=ok } v') (Update {a} {ok} v) | Yes Refl = okay $ Update v'
+  handle' (AConcrete {a'=a'} {ok'=ok'} v') (Update {a} {ok} v) | No _ = throw $ CouldNotChangeVal a' a
+handle' (AConcrete {a'} {ok'} v') (Change {a} {ok} v) with (decBasic ok' ok)
+  handle' (AConcrete {a'=a } {ok'=ok } v') (Change {a} {ok} l) | Yes Refl = modify (write v' l) *> okay (Change l)
+  handle' (AConcrete {a'=a'} {ok'=ok'} v') (Change {a} {ok} l) | No _ = throw $ CouldNotChangeRef a' a
+handle' c _ = throw $ CouldNotHandleValue c
 
 handle :
   MonadState (State h) m =>
