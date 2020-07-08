@@ -1,11 +1,12 @@
 module Task.Syntax
 
 import Helpers
-import public Task.Universe
+import public Task.Heap
+import public Task.Reflection
 
 %default total
 
----- Tasks ---------------------------------------------------------------------
+---- Labels & Names ------------------------------------------------------------
 
 export
 Label : Type
@@ -37,37 +38,38 @@ DecEq Name where
   decEq (Unnamed) (Named i)  = No absurd
   decEq (Named i) (Unnamed)  = No (negEqSym absurd)
 
+---- Tasks & Editors -----------------------------------------------------------
+
 mutual
 
   public export
-  data Task : (h : Heap) -> (a : Ty) -> Type where
+  data Task : (h : Heap) -> (a : Type) -> Type where
     ---- Editors
-    Edit : {a : Ty} -> (n : Name) -> (e : Editor h a) -> Task h a
+    Edit : (n : Name) -> (e : Editor h a) -> Task h a
     ---- Parallels
-    Pair : (t1 : Task h a) -> (t2 : Task h b) -> Task h (PAIR a b)
-    Done : (v : typeOf a) -> Task h a
+    Pair : (t1 : Task h a) -> (t2 : Task h b) -> Task h (a, b)
+    Done : (v : a) -> Task h a
     Choose : (t1 : Task h a) -> (t2 : Task h a) -> Task h a
     Fail : Task h a
     ---- Steps
-    Trans : (f : typeOf a' -> typeOf a) -> (t : Task h a') -> Task h a
-    Step : (t : Task h a') -> (c : typeOf a' -> Task h a) -> Task h a
+    Trans : (f : a' -> a) -> (t : Task h a') -> Task h a
+    Step : (t : Task h a') -> (c : a' -> Task h a) -> Task h a
     ---- Asserts
-    Assert : (b : Bool) -> Task h (PRIM BOOL)
+    Assert : (p : Bool) -> Task h Bool
     ---- Stores
-    -- Share : IsBasic t => t -> Task h (Ref h t)
-    Assign : IsBasic a => (v : typeOf a) -> (r : typeOf (REF h a)) -> Task h UNIT
+    -- Share : Reflect a => a -> Task h (Ref h a)
+    Assign : Reflect a => (v : a) -> (r : Ref h a) -> Task h ()
 
   public export
-  data Editor : (h : Heap) -> (a : Ty) -> Type where
+  data Editor : (h : Heap) -> (a : Type) -> Type where
     ---- Owned
-    Enter : IsBasic a => Editor h a
-    Update : IsBasic a => (v : typeOf a) -> Editor h a
-    View : IsBasic a => (v : typeOf a) -> Editor h a
+    Enter : {a : Type} -> Reflect a => Editor h a
+    Update : {a : Type} -> Reflect a => (v : a) -> Editor h a
+    View : {a : Type} -> Reflect a => (v : a) -> Editor h a
     Select : (ts : List (Label, Task h a)) -> Editor h a
     ---- Shared
-    --> Need to store `b` for `watching`
-    Change : {b : Ty} -> IsBasic b => (r : typeOf (REF h b)) -> Editor h b
-    Watch : {b : Ty} -> IsBasic b => (r : typeOf (REF h b)) -> Editor h b
+    Change : {a : Type} -> Reflect a => (r : Ref h a) -> Editor h a
+    Watch : {a : Type} -> Reflect a => (r : Ref h a) -> Editor h a
 
 ---- Inputs & Options ----------------------------------------------------------
 
@@ -75,28 +77,28 @@ mutual
 
 public export
 data Concrete : Type where
-  AConcrete : {b : Ty} -> (v : typeOf b) -> Concrete
+  AConcrete : Reflect a => (v : a) -> Concrete
 
----- Dummy inputs
-
-public export
-data Dummy : Type where
-  ADummy : (b : Ty) -> Dummy
+---- Symbolic inputs
 
 public export
-Eq Dummy where
-  (==) (ADummy a) (ADummy b) with (a ?= b)
-    (==) (ADummy a) (ADummy a) | Yes Refl  = True
-    (==) (ADummy a) (ADummy b) | No contra = False
+data Symbolic : Type where
+  ASymbolic : (a : Type) -> Reflect a => Symbolic
 
-dummy_inj : (ADummy a = ADummy x) -> (a = x)
-dummy_inj Refl = Refl
+-- public export
+-- Eq Symbolic where
+  -- (==) (ASymbolic a) (ASymbolic b) with (typEq a b)
+  --   (==) (ASymbolic a) (ASymbolic b) | Yes Refl  = True
+  --   (==) (ASymbolic a) (ASymbolic b) | No contra = False
 
-public export
-DecEq Dummy where
-  decEq (ADummy a) (ADummy b) with (a ?= b)
-    decEq (ADummy a) (ADummy a) | Yes Refl = Yes Refl
-    decEq (ADummy a) (ADummy b) | No contra = No (contra . dummy_inj)
+symbolic_inj : Reflect a => Reflect x => (ASymbolic a = ASymbolic x) -> (a = x)
+symbolic_inj Refl = Refl
+
+-- public export
+-- DecEq Symbolic where
+  -- decEq (ASymbolic a) (ASymbolic b) with (typEq a b)
+  --   decEq (ASymbolic a) (ASymbolic b) | Yes Refl = Yes Refl
+  --   decEq (ASymbolic a) (ASymbolic b) | No contra = No (contra . symbolic_inj)
 
 ---- Input actions
 

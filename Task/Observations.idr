@@ -9,7 +9,7 @@ import Task.Syntax
 ---- Values --------------------------------------------------------------------
 
 public export
-value' : Editor h a -> State h -> Maybe (typeOf a)
+value' : Editor h a -> State h -> Maybe a
 value' (Enter)    _ = Nothing
 value' (Update b) _ = Just b
 value' (View b)   _ = Just b
@@ -18,7 +18,7 @@ value' (Change l) s = Just (read l s)
 value' (Watch l)  s = Just (read l s)
 
 public export
-value : Task h a -> State h -> Maybe (typeOf a)
+value : Task h a -> State h -> Maybe a
 value (Edit n e)         s = value' e s
 value (Trans f t)        s = map f (value t s)
 value (Pair t1 t2)       s = value t1 s <&> value t2 s
@@ -57,15 +57,15 @@ mutual
 
 ---- Watching ------------------------------------------------------------------
 
-watching' : Editor h a -> List (t : Ty ** Ref h (typeOf t))
+watching' : Editor h a -> List (t : Type ** Ref h t)
 watching' (Enter)        = []
 watching' (Update _)     = []
 watching' (View _)       = []
 watching' (Select _)     = []
-watching' (Change {b} l) = [(b ** l)]
-watching' (Watch {b} l)  = [(b ** l)]
+watching' (Change {a} l) = [(a ** l)]
+watching' (Watch {a} l)  = [(a ** l)]
 
-watching : Task h a -> List (t : Ty ** Ref h (typeOf t))
+watching : Task h a -> List (t : Type ** Ref h t)
 watching (Edit _ e)     = watching' e
 watching (Trans _ t2)   = watching t2
 watching (Pair t1 t2)   = watching t1 ++ watching t2
@@ -93,16 +93,16 @@ options (_)                  = []
 ---- Inputs --------------------------------------------------------------------
 
 public export
-inputs' : {b : Ty} -> Editor h b -> List Dummy
-inputs' (Enter)    = [ADummy b]
-inputs' (Update _) = [ADummy b]
-inputs' (View _)   = []
-inputs' (Select _) = [] --> selections do not have `IEnter` actions and are handles separately
-inputs' (Change _) = [ADummy b]
-inputs' (Watch _)  = []
+inputs' : Editor h a -> List Symbolic
+inputs' (Enter {a})    = [ASymbolic a]
+inputs' (Update {a} _) = [ASymbolic a]
+inputs' (View {a} _)   = []
+inputs' (Select _)     = [] --> selections do not have `IEnter` actions and are handles separately
+inputs' (Change {a} _) = [ASymbolic a]
+inputs' (Watch {a} _)  = []
 
 public export
-inputs : Task h a -> State h -> List (Input Dummy)
+inputs : Task h a -> State h -> List (Input Symbolic)
 inputs (Edit n (Select ts))  _ = [ AInput n (ASelect l) | l <- labels ts ]
 inputs (Edit n e)            s = [ AInput n (AEnter d) | d <- inputs' e ]
 inputs (Trans _ t2)          s = inputs t2 s
