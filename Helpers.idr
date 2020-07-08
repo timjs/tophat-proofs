@@ -14,6 +14,10 @@ public export
 (?=) : DecEq t => (x : t) -> (y : t) -> Dec (x = y)
 (?=) = decEq
 
+public export
+interface DecInj (f : Type -> Type) where
+  decInj : (x : f a) -> (y : f b) -> Dec (a = b)
+
 ---- Logic ---------------------------------------------------------------------
 
 infixr 6 /\

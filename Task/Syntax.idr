@@ -77,28 +77,28 @@ mutual
 
 public export
 data Concrete : Type where
-  AConcrete : IsBasic a => (v : a) -> Concrete
+  AConcrete : IsBasic t => (v : t) -> Concrete
 
 ---- Symbolic inputs
 
 public export
 data Symbolic : Type where
-  ASymbolic : (a : Type) -> IsBasic a => Symbolic
+  ASymbolic : (t : Type) -> {auto p : IsBasic t} -> Symbolic
 
--- public export
--- Eq Symbolic where
-  -- (==) (ASymbolic a) (ASymbolic b) with (typEq a b)
-  --   (==) (ASymbolic a) (ASymbolic b) | Yes Refl  = True
-  --   (==) (ASymbolic a) (ASymbolic b) | No contra = False
+public export
+Eq Symbolic where
+  (==) (ASymbolic a {p=p_a}) (ASymbolic b {p=p_b}) with (decInj p_a p_b)
+    (==) (ASymbolic a {p=p_a}) (ASymbolic a {p=p_b}) | Yes Refl = True
+    (==) (ASymbolic a {p=p_a}) (ASymbolic b {p=p_b}) | No _ = False
 
-symbolic_inj : IsBasic a => IsBasic x => (ASymbolic a = ASymbolic x) -> (a = x)
-symbolic_inj Refl = Refl
+symbolicInjective : IsBasic a => IsBasic x => (ASymbolic a = ASymbolic x) -> (a = x)
+symbolicInjective Refl = Refl
 
--- public export
--- DecEq Symbolic where
-  -- decEq (ASymbolic a) (ASymbolic b) with (typEq a b)
-  --   decEq (ASymbolic a) (ASymbolic b) | Yes Refl = Yes Refl
-  --   decEq (ASymbolic a) (ASymbolic b) | No contra = No (contra . symbolic_inj)
+public export
+DecEq Symbolic where
+  decEq (ASymbolic a {p=p_a}) (ASymbolic b {p=p_b}) with (decInj p_a p_b)
+    decEq (ASymbolic a {p=p_a}) (ASymbolic a {p=p_b}) | Yes Refl = Yes ?symbolic_decEq_yes
+    decEq (ASymbolic a {p=p_a}) (ASymbolic b {p=p_b}) | No cntr = No (cntr . symbolicInjective)
 
 ---- Input actions
 
@@ -107,11 +107,27 @@ data Action k
   = AEnter k
   | ASelect Label
 
+enterInjective : (AEnter k = AEnter x) -> (k = x)
+enterInjective Refl = Refl
+
+selectInjective : (ASelect l = ASelect x) -> (l = x)
+selectInjective Refl = Refl
+
 public export
 Eq k => Eq (Action k) where
   (==) (AEnter x)  (AEnter x')  = x == x'
   (==) (ASelect l) (ASelect l') = l == l'
   (==) _           _            = False
+
+public export
+DecEq k => DecEq (Action k) where
+  decEq (AEnter x)  (AEnter x')  with (x ?= x')
+    decEq (AEnter x)  (AEnter x)  | Yes Refl = Yes Refl
+    decEq (AEnter x)  (AEnter x') | No cntr = No (cntr . enterInjective)
+  decEq (ASelect l) (ASelect l') with (l ?= l')
+    decEq (ASelect l) (ASelect l)  | Yes Refl = Yes Refl
+    decEq (ASelect l) (ASelect l') | No cntr = No (cntr . selectInjective)
+  decEq _           _            = ?action_decEq_rest
 
 ---- Full inputs
 
@@ -126,7 +142,8 @@ Eq k => Eq (Input k) where
 
 public export
 DecEq k => DecEq (Input k) where
-  decEq (AInput n a) (AInput n' a') = ?h_1
+  decEq (AInput n a) (AInput n' a') with (n ?= n', a ?= a')
+    decEq (AInput n a) (AInput n' a') | with_pat = ?input_decEq_rest
 
 ---- Options
 

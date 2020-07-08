@@ -27,8 +27,8 @@ Monoidal Maybe where
 
   skip = Just ()
 
-public export
-implementation Monoidal (Either e)
+-- public export
+-- implementation Monoidal (Either e)
 
 -- export
 -- applyDefault : Monoidal f => f (a -> b) -> f a -> f b
