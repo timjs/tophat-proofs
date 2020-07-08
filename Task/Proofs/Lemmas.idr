@@ -3,7 +3,6 @@ module Task.Proofs.Lemmas
 import Helpers
 import Data.List
 import Data.List.Quantifiers
-import Task.Syntax
 import Task.Observations
 
 ---- On evidence ---------------------------------------------------------------

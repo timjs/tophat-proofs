@@ -2,7 +2,7 @@ module Task.Syntax
 
 import Helpers
 import public Task.Heap
-import public Task.Reflection
+import public Task.Types
 
 %default total
 
@@ -57,19 +57,19 @@ mutual
     ---- Asserts
     Assert : (p : Bool) -> Task h Bool
     ---- Stores
-    -- Share : Reflect a => a -> Task h (Ref h a)
-    Assign : Reflect a => (v : a) -> (r : Ref h a) -> Task h ()
+    -- Share : IsBasic a => a -> Task h (Ref h a)
+    Assign : IsBasic a => (v : a) -> (r : Ref h a) -> Task h ()
 
   public export
   data Editor : (h : Heap) -> (a : Type) -> Type where
     ---- Owned
-    Enter : {a : Type} -> Reflect a => Editor h a
-    Update : {a : Type} -> Reflect a => (v : a) -> Editor h a
-    View : {a : Type} -> Reflect a => (v : a) -> Editor h a
+    Enter : {a : Type} -> IsBasic a => Editor h a
+    Update : {a : Type} -> IsBasic a => (v : a) -> Editor h a
+    View : {a : Type} -> IsBasic a => (v : a) -> Editor h a
     Select : (ts : List (Label, Task h a)) -> Editor h a
     ---- Shared
-    Change : {a : Type} -> Reflect a => (r : Ref h a) -> Editor h a
-    Watch : {a : Type} -> Reflect a => (r : Ref h a) -> Editor h a
+    Change : {a : Type} -> IsBasic a => (r : Ref h a) -> Editor h a
+    Watch : {a : Type} -> IsBasic a => (r : Ref h a) -> Editor h a
 
 ---- Inputs & Options ----------------------------------------------------------
 
@@ -77,13 +77,13 @@ mutual
 
 public export
 data Concrete : Type where
-  AConcrete : Reflect a => (v : a) -> Concrete
+  AConcrete : IsBasic a => (v : a) -> Concrete
 
 ---- Symbolic inputs
 
 public export
 data Symbolic : Type where
-  ASymbolic : (a : Type) -> Reflect a => Symbolic
+  ASymbolic : (a : Type) -> IsBasic a => Symbolic
 
 -- public export
 -- Eq Symbolic where
@@ -91,7 +91,7 @@ data Symbolic : Type where
   --   (==) (ASymbolic a) (ASymbolic b) | Yes Refl  = True
   --   (==) (ASymbolic a) (ASymbolic b) | No contra = False
 
-symbolic_inj : Reflect a => Reflect x => (ASymbolic a = ASymbolic x) -> (a = x)
+symbolic_inj : IsBasic a => IsBasic x => (ASymbolic a = ASymbolic x) -> (a = x)
 symbolic_inj Refl = Refl
 
 -- public export
