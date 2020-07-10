@@ -20,11 +20,15 @@ data NotApplicable
   | CouldNotHandle (Input Concrete)
   | CouldNotHandleValue Concrete
 
+okay : Monad m => a -> m (Either e a)
+okay = pure . Right
+
 throw : Monad m => e -> m (Either e a)
 throw = pure . Left
 
-okay : Monad m => a -> m (Either e a)
-okay = pure . Right
+rethrow : Monad m => Either e a -> (a -> b) -> m (Either e b)
+rethrow (Left e)  _ = throw e
+rethrow (Right x) f = okay $ f x
 
 ---- Normalisation -------------------------------------------------------------
 
@@ -121,47 +125,48 @@ handle t i = case t of
           Just t' => do
             let os = options t
             if Option n l `elem` os
-              then okay t'
+              then pure t'
               else throw $ CouldNotGoTo l
         else throw $ CouldNotMatch n n'
       _ => throw $ CouldNotHandle i
     IEnter m b' => if n == Named m
       then do
         e' <- handle' b' e
-        okay $ Edit n e'
+        pure $ Edit n e'
       else throw $ CouldNotMatch n (Named m)
-  ---- Pass
-  Trans e1 t2 => do
-    t2' <- handle t2 i
-    okay $ Trans e1 t2'
-  Step t1 e2 => do
-    et1' <- try $ handle t1 i
-    case et1' of
-      Right t1' => okay $ Step t1' e2 -- H-Step
-      Left _ => do
-        mv1 <- raise $ raise $ value t1
-        case mv1 of
-          Nothing => throw CouldNotContinue
-          Just v1 => do
-            let t2 = e2 v1
-            handle t2 i -- H-StepCont
-  Pair t1 t2 => do
-    et1' <- try $ handle t1 i
-    case et1' of
-      Right t1' => okay $ Pair t1' t2 -- H-PairFirst
-      Left _ => do
-        t2' <- handle t2 i
-        okay $ Pair t1 t2' -- H-PairSecond
-  Choose t1 t2 => do
-    et1' <- try $ handle t1 i
-    case et1' of
-      Right t1' => okay $ Choose t1' t2 -- H-ChooseFirst
-      Left _ => do
-        t2' <- handle t2 i
-        okay $ Choose t1 t2' -- H-ChoosSecond
-        ---- Rest
-  _ => throw $ CouldNotHandle i
       -}
+---- Pass
+handle (Trans e1 t2) i = do
+  t2' <- handle t2 i
+  rethrow t2' $ Trans e1
+handle (Step t1 e2) i = do
+  et1' <- handle t1 i
+  case et1' of
+    Right t1' => okay $ Step t1' e2 -- H-Step
+    Left _ => do
+      mv1 <- gets $ value t1
+      case mv1 of
+        Nothing => throw $ CouldNotContinue
+        Just v1 => do
+          let t2 = e2 v1
+          handle t2 i -- H-StepCont
+handle (Pair t1 t2) i = do
+  et1' <- handle t1 i
+  case et1' of
+    Right t1' => okay $ Pair t1' t2 -- H-PairFirst
+    Left _ => do
+      t2' <- handle t2 i
+      rethrow t2' $ Pair t1 -- H-PairSecond
+handle (Choose t1 t2) i = do
+  et1' <- handle t1 i
+  case et1' of
+    Right t1' => okay $ Choose t1' t2 -- H-ChooseFirst
+    Left _ => do
+      t2' <- handle t2 i
+      rethrow t2' $ Choose t1 -- H-ChoosSecond
+---- Rest
+handle _ i = throw $ CouldNotHandle i
+
 
 ---- Fixation ------------------------------------------------------------------
 
@@ -204,10 +209,10 @@ initialise t = do
 interact :
   MonadSupply Nat m =>
   MonadState (State h) m =>
-  Input Concrete ->
   Task h a ->
+  Input Concrete ->
   m (Task h a)
-interact i t = do
+interact t i = do
   xt <- handle t i
   case xt of
     Left e => do

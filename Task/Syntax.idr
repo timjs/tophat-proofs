@@ -23,18 +23,20 @@ Eq Name where
   (==) (Named i) (Named i') = i == i'
   (==) _         _          = False
 
+export
 Uninhabited (Unnamed = Named i) where
   uninhabited Refl impossible
 
-named_inj : (Named i = Named j) -> (i = j)
-named_inj Refl = Refl
+export
+namedInjective : (Named i = Named j) -> (i = j)
+namedInjective Refl = Refl
 
 public export
 DecEq Name where
   decEq (Unnamed) (Unnamed)  = Yes Refl
   decEq (Named i) (Named i') with (i ?= i')
     decEq (Named i) (Named i)  | Yes Refl = Yes Refl
-    decEq (Named i) (Named i') | No contra = No (contra . named_inj)
+    decEq (Named i) (Named i') | No contra = No (contra . namedInjective)
   decEq (Unnamed) (Named i)  = No absurd
   decEq (Named i) (Unnamed)  = No (negEqSym absurd)
 
@@ -91,18 +93,14 @@ Eq Symbolic where
     (==) (ASymbolic a {ok'=ok_a}) (ASymbolic a {ok'=ok_a}) | Yes Refl = True
     (==) (ASymbolic a {ok'=ok_a}) (ASymbolic b {ok'=ok_b}) | No _ = False
 
-symbolicInjective : IsBasic a => IsBasic x => (ASymbolic a = ASymbolic x) -> (a = x)
-symbolicInjective Refl = Refl
-
-symbolicCong : {auto ok_a : IsBasic a} -> {auto ok_b : IsBasic b} -> (ASymbolic a = ASymbolic b) -> (ok_a = ok_b)
-symbolicCong {ok_a=ok} {ok_b=ok} Refl = Refl
---> This should be generalised...
+symbolicInjective : {auto ok_a : IsBasic a} -> {auto ok_b : IsBasic b} -> (ASymbolic a = ASymbolic b) -> (ok_a = ok_b)
+symbolicInjective {ok_a=ok} {ok_b=ok} Refl = Refl
 
 public export
 DecEq Symbolic where
   decEq (ASymbolic a {ok'=ok_a}) (ASymbolic b {ok'=ok_b}) with (decBasic ok_a ok_b)
     decEq (ASymbolic a {ok'=ok_a}) (ASymbolic a {ok'=ok_a}) | Yes Refl = Yes Refl
-    decEq (ASymbolic a {ok'=ok_a}) (ASymbolic b {ok'=ok_b}) | No cntr = No (cntr . symbolicCong)
+    decEq (ASymbolic a {ok'=ok_a}) (ASymbolic b {ok'=ok_b}) | No cntr = No (cntr . symbolicInjective)
 
 ---- Input actions
 
