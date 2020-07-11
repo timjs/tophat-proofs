@@ -18,6 +18,7 @@ public export
 
 infixr 6 /\
 infixr 6 \/
+infixr 6 <>
 infixr 6 <->
 
 public export
@@ -27,6 +28,10 @@ public export
 public export
 (\/) : Type -> Type -> Type
 (\/) = Either
+
+public export
+(<>) : Type -> Type -> Type
+(<>) a b = (a /\ Not b) \/ (Not a /\ b)
 
 public export
 (<->) : Type -> Type -> Type
