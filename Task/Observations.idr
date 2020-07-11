@@ -85,7 +85,7 @@ labels = map fst . filter (not . failing . snd) --> [ l | (l, t) <- _, not (fail
 
 public export
 options : Task h a -> List Option
-options (Edit n (Select ts)) = [ AOption n l | l <- labels ts ]
+options (Edit n (Select ts)) = [ (n, l) | l <- labels ts ]
 options (Trans _ t2)         = options t2
 options (Step t1 _)          = options t1
 options (_)                  = []
@@ -103,8 +103,8 @@ inputs' (Watch {a} _)  = []
 
 public export
 inputs : Task h a -> State h -> List (Input Symbolic)
-inputs (Edit n (Select ts))  _ = [ AInput n (ASelect l) | l <- labels ts ]
-inputs (Edit n e)            s = [ AInput n (AEnter d) | d <- inputs' e ]
+inputs (Edit n (Select ts))  _ = [ (n, ASelect l) | l <- labels ts ]
+inputs (Edit n e)            s = [ (n, AEnter d) | d <- inputs' e ]
 inputs (Trans _ t2)          s = inputs t2 s
 inputs (Pair t1 t2)          s = inputs t1 s ++ inputs t2 s
 inputs (Done _)              _ = []

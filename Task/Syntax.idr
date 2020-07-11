@@ -8,7 +8,7 @@ import public Task.Types
 
 ---- Labels & Names ------------------------------------------------------------
 
-export
+public export
 Label : Type
 Label = String
 
@@ -134,25 +134,30 @@ DecEq k => DecEq (Action k) where
 ---- Full inputs
 
 public export
-data Input k
-  = AInput Name (Action k)
+Input : Type -> Type
+Input k = (Name, Action k)
+-- data Input k
+--   = AInput Name (Action k)
 
-public export
-Eq k => Eq (Input k) where
-  (==) (AInput n a)  (AInput n' a')  = n == n' && a == a'
-  (==) _             _               = False
+-- public export
+-- Eq k => Eq (Input k) where
+--   (==) (AInput n a)  (AInput n' a')  = n == n' && a == a'
+--   (==) _             _               = False
 
-public export
-DecEq k => DecEq (Input k) where
-  decEq (AInput n a) (AInput n' a') with (n ?= n', a ?= a')
-    decEq (AInput n a) (AInput n' a') | with_pat = ?input_decEq_rest
+-- public export
+-- DecEq k => DecEq (Input k) where
+--   decEq (AInput n a) (AInput n' a') with (n ?= n', a ?= a')
+--     decEq (AInput n a) (AInput n' a') | with_pat = ?input_decEq_rest
 
 ---- Options
 
 public export
-data Option
-  = AOption Name Label
+Option : Type
+Option = (Name, Label)
+-- data Option
+--   = AOption Name Label
+
 
 export
 fromOption : Option -> Input b
-fromOption (AOption n l) = AInput n (ASelect l)
+fromOption (n, l) = (n, ASelect l)

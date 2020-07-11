@@ -95,46 +95,41 @@ normalise t = case t of
 
 handle' :
   MonadState (State h) m =>
-  Concrete ->
   Editor h a ->
+  Concrete ->
   m (Either NotApplicable (Editor h a))
-handle' (AConcrete {a'} {ok'} v') (Enter {a} {ok}) with (decBasic ok' ok)
-  handle' (AConcrete {a'=a } {ok'=ok } v') (Enter {a} {ok}) | Yes Refl = okay $ Update v'
-  handle' (AConcrete {a'=a'} {ok'=ok'} v') (Enter {a} {ok}) | No _ = throw $ CouldNotChangeVal a' a
-handle' (AConcrete {a'} {ok'} v') (Update {a} {ok} v) with (decBasic ok' ok)
-  handle' (AConcrete {a'=a } {ok'=ok } v') (Update {a} {ok} v) | Yes Refl = okay $ Update v'
-  handle' (AConcrete {a'=a'} {ok'=ok'} v') (Update {a} {ok} v) | No _ = throw $ CouldNotChangeVal a' a
-handle' (AConcrete {a'} {ok'} v') (Change {a} {ok} v) with (decBasic ok' ok)
-  handle' (AConcrete {a'=a } {ok'=ok } v') (Change {a} {ok} l) | Yes Refl = modify (write v' l) *> okay (Change l)
-  handle' (AConcrete {a'=a'} {ok'=ok'} v') (Change {a} {ok} l) | No _ = throw $ CouldNotChangeRef a' a
-handle' c _ = throw $ CouldNotHandleValue c
+handle' (Enter {a} {ok}) (AConcrete {a'} {ok'} v') with (decBasic ok ok')
+  handle' (Enter {a} {ok}) (AConcrete {a'=a } {ok'=ok } v') | Yes Refl = okay $ Update v'
+  handle' (Enter {a} {ok}) (AConcrete {a'=a'} {ok'=ok'} v') | No _ = throw $ CouldNotChangeVal a' a
+handle' (Update {a} {ok} v) (AConcrete {a'} {ok'} v') with (decBasic ok ok')
+  handle' (Update {a} {ok} v) (AConcrete {a'=a } {ok'=ok } v') | Yes Refl = okay $ Update v'
+  handle' (Update {a} {ok} v) (AConcrete {a'=a'} {ok'=ok'} v') | No _ = throw $ CouldNotChangeVal a' a
+handle' (Change {a} {ok} v) (AConcrete {a'} {ok'} v') with (decBasic ok ok')
+  handle' (Change {a} {ok} l) (AConcrete {a'=a } {ok'=ok } v') | Yes Refl = modify (write v' l) *> okay (Change l)
+  handle' (Change {a} {ok} l) (AConcrete {a'=a'} {ok'=ok'} v') | No _ = throw $ CouldNotChangeRef a' a
+handle' _ c = throw $ CouldNotHandleValue c
 
 handle :
   MonadState (State h) m =>
   Task h a ->
   Input Concrete ->
   m (Either NotApplicable (Task h a))
-{-
-handle t i = case t of
-  ---- Editors
-  Edit n e => case i of
-    IOption n' l => case e of
-      Select ts => if n == n'
-        then case HashMap.lookup l ts of
-          Nothing => throw $ CouldNotFind l
-          Just t' => do
-            let os = options t
-            if Option n l `elem` os
-              then pure t'
-              else throw $ CouldNotGoTo l
-        else throw $ CouldNotMatch n n'
-      _ => throw $ CouldNotHandle i
-    IEnter m b' => if n == Named m
-      then do
-        e' <- handle' b' e
-        pure $ Edit n e'
-      else throw $ CouldNotMatch n (Named m)
-      -}
+---- Editors
+handle t@(Edit n (Select ts)) (n', ASelect l) = if n == n'
+  then case lookup l ts of
+    Nothing => throw $ CouldNotFind l
+    Just t' => do
+      let os = options t
+      if (n, l) `elem` os
+        then okay $ t'
+        else throw $ CouldNotGoTo l
+  else throw $ CouldNotMatch n n'
+--FIXME: does this allow sending Enter actions to unnamed editors??
+handle (Edit n e) (n', AEnter c) = if n == n'
+  then do
+    e' <- handle' e c
+    rethrow e' $ Edit n
+  else throw $ CouldNotMatch n n'
 ---- Pass
 handle (Trans e1 t2) i = do
   t2' <- handle t2 i
