@@ -7,7 +7,7 @@ import Data.List
 import Task.Syntax
 import Task.Observations
 
--- %default total
+%default total
 
 ---- Errors --------------------------------------------------------------------
 
@@ -34,11 +34,8 @@ rethrow (Right x) f = okay $ f x
 
 ---- Normalisation -------------------------------------------------------------
 
-normalise :
-  MonadSupply Nat m =>
-  MonadState (State h) m =>
-  Task h a ->
-  m (Task h a)
+normalise : MonadSupply Nat m => MonadState (State h) m =>
+  Task h a -> m (Task h a)
 ---- Step
 normalise (Step t1 e2) = do
   t1' <- normalise t1
@@ -54,8 +51,7 @@ normalise (Step t1 e2) = do
           let os = options t2
           if not $ isNil $ os
             then pure stay -- N-StepWait
-            else normalise t2 -- N-StepCont
-
+            else assert_total (normalise t2) -- N-StepCont
 ---- Choose
 normalise (Choose t1 t2) = do
   t1' <- normalise t1
@@ -68,7 +64,6 @@ normalise (Choose t1 t2) = do
       case mv2 of
         Just _ => pure t2' -- N-ChooseRight
         Nothing => pure $ Choose t1' t2' -- N-ChooseNone
-
 ---- Congruences
 normalise (Trans f t2) = pure (Trans f) <*> normalise t2
 normalise (Pair t1 t2) = pure Pair <*> normalise t1 <*> normalise t2
@@ -94,11 +89,8 @@ normalise (Assign b l) = do
 
 ---- Handling ------------------------------------------------------------------
 
-handle' :
-  MonadState (State h) m =>
-  Editor h a ->
-  Concrete ->
-  m (Either NotApplicable (Editor h a))
+handle' : MonadState (State h) m =>
+  Editor h a -> Concrete -> m (Either NotApplicable (Editor h a))
 handle' (Enter {a} {ok}) (AConcrete {a'} {ok'} v') with (decBasic ok ok')
   handle' (Enter {a} {ok}) (AConcrete {a'=a } {ok'=ok } v') | Yes Refl = okay $ Update v'
   handle' (Enter {a} {ok}) (AConcrete {a'=a'} {ok'=ok'} v') | No _ = throw $ CouldNotChangeVal a' a
@@ -110,11 +102,8 @@ handle' (Change {a} {ok} v) (AConcrete {a'} {ok'} v') with (decBasic ok ok')
   handle' (Change {a} {ok} l) (AConcrete {a'=a'} {ok'=ok'} v') | No _ = throw $ CouldNotChangeRef a' a
 handle' _ c = throw $ CouldNotHandleValue c
 
-handle :
-  MonadState (State h) m =>
-  Task h a ->
-  Input Concrete ->
-  m (Either NotApplicable (Task h a))
+handle : MonadState (State h) m =>
+  Task h a -> Input Concrete -> m (Either NotApplicable (Task h a))
 ---- Editors
 handle t@(Edit n (Select ts)) (n', ASelect l) = if n == n'
   then case lookup l ts of
@@ -166,11 +155,8 @@ handle _ i = throw $ CouldNotHandle i
 
 ---- Fixation ------------------------------------------------------------------
 
-fixate :
-  MonadSupply Nat m =>
-  MonadState (State h) m =>
-  Task h a ->
-  m (Task h a)
+fixate : MonadSupply Nat m => MonadState (State h) m =>
+  Task h a -> m (Task h a)
 fixate = normalise
   -- (d, t') <- runWriter t
   -- (d', t'') <- normalise t' |> runWriter
@@ -191,23 +177,16 @@ fixate = normalise
 
 ---- Initialisation ------------------------------------------------------------
 
-initialise :
-  MonadSupply Nat m =>
-  MonadState (State h) m =>
-  Task h a ->
-  m (Task h a)
-initialise t = do
+initialise : MonadSupply Nat m => MonadState (State h) m =>
+  Task h a -> m (Task h a)
+initialise = fixate
   -- log Info $ DidStart (display t)
-  fixate t
+  -- fixate t
 
 ---- Interaction ---------------------------------------------------------------
 
-interact :
-  MonadSupply Nat m =>
-  MonadState (State h) m =>
-  Task h a ->
-  Input Concrete ->
-  m (Task h a)
+interact : MonadSupply Nat m => MonadState (State h) m =>
+  Task h a -> Input Concrete -> m (Task h a)
 interact t i = do
   xt <- handle t i
   case xt of
