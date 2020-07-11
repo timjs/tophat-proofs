@@ -3,6 +3,7 @@ module Task.Proofs.Lemmas
 import Helpers
 import Data.List
 import Data.List.Quantifiers
+import Data.Maybe
 import Task.Observations
 
 ---- On evidence ---------------------------------------------------------------
@@ -10,6 +11,18 @@ import Task.Observations
 ||| Having both a proof that `p` and that `Not p` is not possible.
 not_both_true_and_false : Not (p, Not p) -- : (p, p -> Void) -> Void
 not_both_true_and_false (p, not_p) = not_p p
+
+public export
+notOrIsAndNot : Not (a \/ b) -> (Not a /\ Not b)
+notOrIsAndNot f = (\x => f (Left x), \x => f (Right x))
+
+public export
+andNotIsNotOr : (Not a /\ Not b) -> Not (a \/ b)
+andNotIsNotOr (f, g) (Left x)  = f x
+andNotIsNotOr (f, g) (Right y) = g y
+
+notAndIsOr : Not (a /\ b) -> (Not a \/ Not b)
+notAndIsOr f = Left (\x => ?notAndIsOr_rhs)
 
 ---- On booleans ---------------------------------------------------------------
 
@@ -45,6 +58,15 @@ and_merge_inh (p_x, p_y) = rewrite p_x in rewrite p_y in Refl
 ---- On maybes -----------------------------------------------------------------
 
 export
+notJustIsNothing : {x : Maybe a} -> Not (IsJust x) -> (x = Nothing)
+notJustIsNothing {x = Nothing}  _ = Refl
+notJustIsNothing {x = (Just _)} f = void (f ItIsJust)
+
+export
+mapIsJust : {f : a -> b} -> IsJust x -> IsJust (map f x)
+mapIsJust ItIsJust = ItIsJust
+
+export
 map_over_nothing_is_nothing : {x : Maybe a} -> (map f x = Nothing) -> (x = Nothing)
 map_over_nothing_is_nothing {x = Nothing} _    = Refl
 map_over_nothing_is_nothing {x = (Just x)} prf = absurd prf
@@ -64,6 +86,11 @@ pair_results_nothing {x = Just _ } {y = Nothing} prf = Right Refl
 pair_results_nothing {x = Just _ } {y = Just _ } prf = Left (absurd prf)
 
 ---- On lists ------------------------------------------------------------------
+
+export
+notNonEmptyIsNil: {l : List a} -> Not (NonEmpty l) -> (l = [])
+notNonEmptyIsNil {l = []}      f = Refl
+notNonEmptyIsNil {l = x :: xs} f = void (f IsNonEmpty)
 
 ---- All
 
