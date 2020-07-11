@@ -7,6 +7,8 @@ import Data.List
 import Task.Syntax
 import Task.Observations
 
+-- %default total
+
 ---- Errors --------------------------------------------------------------------
 
 data NotApplicable
@@ -37,59 +39,58 @@ normalise :
   MonadState (State h) m =>
   Task h a ->
   m (Task h a)
-normalise t = case t of
-  ---- Step
-  Step t1 e2 => do
-    t1' <- normalise t1
-    let stay = Step t1' e2
-    mv1 <- gets $ value t1'
-    case mv1 of
-      Nothing => pure stay -- N-StepNone
-      Just v1 => do
-        let t2 = e2 v1
-        if failing t2
-          then pure stay -- N-StepFail
-          else do
-            let os = options t2
-            if not $ isNil $ os
-              then pure stay -- N-StepWait
-              else normalise t2 -- N-StepCont
+---- Step
+normalise (Step t1 e2) = do
+  t1' <- normalise t1
+  let stay = Step t1' e2
+  mv1 <- gets $ value t1'
+  case mv1 of
+    Nothing => pure stay -- N-StepNone
+    Just v1 => do
+      let t2 = e2 v1
+      if failing t2
+        then pure stay -- N-StepFail
+        else do
+          let os = options t2
+          if not $ isNil $ os
+            then pure stay -- N-StepWait
+            else normalise t2 -- N-StepCont
 
-  ---- Choose
-  Choose t1 t2 => do
-    t1' <- normalise t1
-    mv1 <- gets $ value t1'
-    case mv1 of
-      Just _ => pure t1' -- N-ChooseLeft
-      Nothing => do
-        t2' <- normalise t2
-        mv2 <- gets $ value t2'
-        case mv2 of
-          Just _ => pure t2' -- N-ChooseRight
-          Nothing => pure $ Choose t1' t2' -- N-ChooseNone
+---- Choose
+normalise (Choose t1 t2) = do
+  t1' <- normalise t1
+  mv1 <- gets $ value t1'
+  case mv1 of
+    Just _ => pure t1' -- N-ChooseLeft
+    Nothing => do
+      t2' <- normalise t2
+      mv2 <- gets $ value t2'
+      case mv2 of
+        Just _ => pure t2' -- N-ChooseRight
+        Nothing => pure $ Choose t1' t2' -- N-ChooseNone
 
-  ---- Congruences
-  Trans f t2 => pure (Trans f) <*> normalise t2
-  Pair t1 t2 => pure Pair <*> normalise t1 <*> normalise t2
-  ---- Ready
-  Done _ => pure t
-  Fail => pure t
-  ---- Editors
-  Edit Unnamed e => do
+---- Congruences
+normalise (Trans f t2) = pure (Trans f) <*> normalise t2
+normalise (Pair t1 t2) = pure Pair <*> normalise t1 <*> normalise t2
+---- Ready
+normalise t@(Done _) = pure t
+normalise t@(Fail) = pure t
+---- Editors
+normalise t@(Edit Unnamed e) = do
     n <- supply
     pure $ Edit (Named n) e
-  Edit (Named _) _ => pure t
-  ---- Checks
-  Assert p => do
+normalise t@(Edit (Named _) _) = pure t
+---- Checks
+normalise (Assert p) = do
     pure $ Done p
-  ---- References
-  -- Share b => do
-  --   l <- Store.alloc b --XXX: raise?
-  --   pure $ Done l
-  Assign b l => do
-    modify (write b l)
-    -- tell [pack r]
-    pure $ Done ()
+---- References
+-- normalise (Share b) = do
+--   l <- Store.alloc b --XXX: raise?
+--   pure $ Done l
+normalise (Assign b l) = do
+  modify (write b l)
+  -- tell [pack r]
+  pure $ Done ()
 
 ---- Handling ------------------------------------------------------------------
 
@@ -170,10 +171,10 @@ fixate :
   MonadState (State h) m =>
   Task h a ->
   m (Task h a)
-fixate t = do
+fixate = normalise
   -- (d, t') <- runWriter t
   -- (d', t'') <- normalise t' |> runWriter
-  t'' <- normalise t
+  -- t'' <- normalise t
   -- log Info $ DidNormalise (display t'')
   -- let ws = watching t''
   -- let ds = d `union` d'
@@ -183,7 +184,7 @@ fixate t = do
       -- log Info $ DidStabilise (length ds) (length ws)
       -- let t''' = balance t''
       -- log Info $ DidBalance (display t''')
-  pure t'' -- F-Done
+  -- pure t'' -- F-Done
     -- _ => do
       -- log Info $ DidNotStabilise (length ds) (length ws) (length os)
       -- fixate $ pure t'' -- F-Loop
