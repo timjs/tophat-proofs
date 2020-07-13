@@ -1,6 +1,7 @@
 module Helpers
 
 import public Decidable.Equality
+import Data.Either
 
 %default total
 
@@ -59,3 +60,21 @@ Uninhabited (Just x = Nothing) where
 public export
 Uninhabited (Nothing = Just y) where
   uninhabited Refl impossible
+
+public export
+Uninhabited (Left e = Right x) where
+  uninhabited Refl impossible
+
+public export
+Uninhabited (Right x = Left e) where
+  uninhabited Refl impossible
+
+---- IsItRight or IsItLeft -----------------------------------------------------
+
+public export
+data IsRight : Either e a -> Type where
+  ItIsRight : IsRight (Right x)
+
+public export
+Uninhabited (IsRight (Left e)) where
+  uninhabited ItIsRight impossible
