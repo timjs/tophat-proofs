@@ -118,8 +118,7 @@ handle t@(Edit n (Select ts)) (n', ASelect l) = case n ?= n' of
   Yes Refl => case lookup l ts of
     Nothing => throw $ CouldNotFind l
     Just t' => do
-      let os = options t
-      if (n, l) `elem` os
+      if (n, l) `elem` options t
         then okay $ t'
         else throw $ CouldNotGoTo l
   No _ => throw $ CouldNotMatch n n'
