@@ -11,6 +11,7 @@ import Task.Observations
 
 ---- Errors --------------------------------------------------------------------
 
+export
 data NotApplicable
   = CouldNotMatch Name Name
   | CouldNotChangeVal Type Type
@@ -22,18 +23,22 @@ data NotApplicable
   | CouldNotHandle (Input Concrete)
   | CouldNotHandleValue Concrete
 
+public export
 okay : Monad m => a -> m (Either e a)
 okay = pure . Right
 
+public export
 throw : Monad m => e -> m (Either e a)
 throw = pure . Left
 
+public export
 rethrow : Monad m => Either e a -> (a -> b) -> m (Either e b)
 rethrow (Left e)  _ = throw e
 rethrow (Right x) f = okay $ f x
 
 ---- Normalisation -------------------------------------------------------------
 
+public export
 normalise : MonadSupply Nat m => MonadState (State h) m =>
   Task h a -> m (Task h a)
 ---- Step
@@ -89,6 +94,7 @@ normalise (Assign b l) = do
 
 ---- Handling ------------------------------------------------------------------
 
+public export
 handle' : MonadState (State h) m =>
   Editor h a -> Concrete -> m (Either NotApplicable (Editor h a))
 handle' (Enter {a} {ok}) (AConcrete {a'} {ok'} v') with (decBasic ok ok')
@@ -100,8 +106,11 @@ handle' (Update {a} {ok} v) (AConcrete {a'} {ok'} v') with (decBasic ok ok')
 handle' (Change {a} {ok} v) (AConcrete {a'} {ok'} v') with (decBasic ok ok')
   handle' (Change {a} {ok} l) (AConcrete {a'=a } {ok'=ok } v') | Yes Refl = modify (write v' l) *> okay (Change l)
   handle' (Change {a} {ok} l) (AConcrete {a'=a'} {ok'=ok'} v') | No _ = throw $ CouldNotChangeRef a' a
-handle' _ c = throw $ CouldNotHandleValue c
+handle' (View _) c = throw $ CouldNotHandleValue c
+handle' (Watch _) c = throw $ CouldNotHandleValue c
+handle' (Select _) c = throw $ CouldNotHandleValue c
 
+public export
 handle : MonadState (State h) m =>
   Task h a -> Input Concrete -> m (Either NotApplicable (Task h a))
 ---- Editors
@@ -114,12 +123,15 @@ handle t@(Edit n (Select ts)) (n', ASelect l) = if n == n'
         then okay $ t'
         else throw $ CouldNotGoTo l
   else throw $ CouldNotMatch n n'
---FIXME: does this allow sending Enter actions to unnamed editors??
+--FIXME: Why is this case needed for proofs? It is covered by the last case below...
+handle t@(Edit n (Select ts)) i@(n', AEnter c) = throw $ CouldNotHandle i
+--FIXME: Does this allow sending Enter actions to unnamed editors??
 handle (Edit n e) (n', AEnter c) = if n == n'
   then do
     e' <- handle' e c
     rethrow e' $ Edit n
   else throw $ CouldNotMatch n n'
+handle (Edit n e) i@(n', ASelect l) = throw $ CouldNotHandle i
 ---- Pass
 handle (Trans e1 t2) i = do
   t2' <- handle t2 i
@@ -150,7 +162,10 @@ handle (Choose t1 t2) i = do
       t2' <- handle t2 i
       rethrow t2' $ Choose t1 -- H-ChoosSecond
 ---- Rest
-handle _ i = throw $ CouldNotHandle i
+handle (Done _) i = throw $ CouldNotHandle i
+handle (Fail) i = throw $ CouldNotHandle i
+handle (Assert _) i = throw $ CouldNotHandle i
+handle (Assign _ _) i = throw $ CouldNotHandle i
 
 
 ---- Fixation ------------------------------------------------------------------
