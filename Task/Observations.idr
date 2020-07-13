@@ -85,7 +85,7 @@ labels = map fst . filter (not . failing . snd) --> [ l | (l, t) <- _, not (fail
 
 public export
 options : Task h a -> List Option
-options (Edit n (Select ts)) = [ (n, l) | l <- labels ts ]
+options (Edit n (Select ts)) = map (\l => (n, l)) (labels ts) --> [ (n, l) | l <- labels ts ]
 options (Trans _ t2)         = options t2
 options (Step t1 _)          = options t1
 options (_)                  = []
@@ -103,8 +103,8 @@ inputs' (Watch {a} _)  = []
 
 public export
 inputs : Task h a -> State h -> List (Input Symbolic)
-inputs (Edit n (Select ts))  _ = [ (n, ASelect l) | l <- labels ts ]
-inputs (Edit n e)            s = [ (n, AEnter d) | d <- inputs' e ]
+inputs (Edit n (Select ts))  _ = map (\l => (n, ASelect l)) (labels ts) --> [ (n, ASelect l) | l <- labels ts ]
+inputs (Edit n e)            s = map (\d => (n, AEnter d)) (inputs' e) --> [ (n, AEnter d) | d <- inputs' e ]
 inputs (Trans _ t2)          s = inputs t2 s
 inputs (Pair t1 t2)          s = inputs t1 s ++ inputs t2 s
 inputs (Done _)              _ = []
@@ -112,7 +112,7 @@ inputs (Choose t1 t2)        s = inputs t1 s ++ inputs t2 s
 inputs (Fail)                _ = []
 inputs (Step t1 e2)          s = inputs t1 s ++ case value t1 s of
                                    Nothing => []
-                                   Just v1 => [ fromOption o | o <- options (e2 v1) ]
+                                   Just v1 => map fromOption (options (e2 v1)) --> [ fromOption o | o <- options (e2 v1) ]
 inputs (Assert _)            _ = []
 -- inputs (Share _)            _ = []
 inputs (Assign _ _)          _ = []
