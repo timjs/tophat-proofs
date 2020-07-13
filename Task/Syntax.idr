@@ -54,8 +54,8 @@ mutual
     Choose : (t1 : Task h a) -> (t2 : Task h a) -> Task h a
     Fail   : Task h a
     ---- Steps
-    Trans  : (f : a' -> a) -> (t : Task h a') -> Task h a
-    Step   : (t : Task h a') -> (c : a' -> Task h a) -> Task h a
+    Trans  : (f : a' -> a) -> (t2 : Task h a') -> Task h a
+    Step   : (t1 : Task h a') -> (c : a' -> Task h a) -> Task h a
     ---- Asserts
     Assert : (p : Bool) -> Task h Bool
     ---- Stores
@@ -138,6 +138,11 @@ Input : Type -> Type
 Input k = (Name, Action k)
 -- data Input k
 --   = AInput Name (Action k)
+
+public export
+dummify : Input Concrete -> Input Symbolic
+dummify (n, AEnter (AConcrete {a'} _)) = (n, AEnter (ASymbolic a'))
+dummify (n, ASelect l)                 = (n, ASelect l)
 
 -- public export
 -- Eq k => Eq (Input k) where
