@@ -79,56 +79,56 @@ mutual
 
 public export
 data Concrete : Type where
-  AConcrete : {a' : Type} -> {auto ok' : IsBasic a'} -> (v : a') -> Concrete
+  Value : {a' : Type} -> {auto ok' : IsBasic a'} -> (v : a') -> Concrete
 
 ---- Symbolic inputs
 
 public export
 data Symbolic : Type where
-  ASymbolic : (a' : Type) -> {auto ok' : IsBasic a'} -> Symbolic
+  Symbol : (a' : Type) -> {auto ok' : IsBasic a'} -> Symbolic
 
 public export
 Eq Symbolic where
-  (==) (ASymbolic a {ok'=ok_a}) (ASymbolic b {ok'=ok_b}) with (decBasic ok_a ok_b)
-    (==) (ASymbolic a {ok'=ok_a}) (ASymbolic a {ok'=ok_a}) | Yes Refl = True
-    (==) (ASymbolic a {ok'=ok_a}) (ASymbolic b {ok'=ok_b}) | No _ = False
+  (==) (Symbol a {ok'=ok_a}) (Symbol b {ok'=ok_b}) with (decBasic ok_a ok_b)
+    (==) (Symbol a {ok'=ok_a}) (Symbol a {ok'=ok_a}) | Yes Refl = True
+    (==) (Symbol a {ok'=ok_a}) (Symbol b {ok'=ok_b}) | No _ = False
 
-symbolicInjective : {auto ok_a : IsBasic a} -> {auto ok_b : IsBasic b} -> (ASymbolic a = ASymbolic b) -> (ok_a = ok_b)
+symbolicInjective : {auto ok_a : IsBasic a} -> {auto ok_b : IsBasic b} -> (Symbol a = Symbol b) -> (ok_a = ok_b)
 symbolicInjective {ok_a=ok} {ok_b=ok} Refl = Refl
 
 public export
 DecEq Symbolic where
-  decEq (ASymbolic a {ok'=ok_a}) (ASymbolic b {ok'=ok_b}) with (decBasic ok_a ok_b)
-    decEq (ASymbolic a {ok'=ok_a}) (ASymbolic a {ok'=ok_a}) | Yes Refl = Yes Refl
-    decEq (ASymbolic a {ok'=ok_a}) (ASymbolic b {ok'=ok_b}) | No cntr = No (cntr . symbolicInjective)
+  decEq (Symbol a {ok'=ok_a}) (Symbol b {ok'=ok_b}) with (decBasic ok_a ok_b)
+    decEq (Symbol a {ok'=ok_a}) (Symbol a {ok'=ok_a}) | Yes Refl = Yes Refl
+    decEq (Symbol a {ok'=ok_a}) (Symbol b {ok'=ok_b}) | No cntr = No (cntr . symbolicInjective)
 
 ---- Input actions
 
 public export
 data Action k
-  = AEnter k
-  | ASelect Label
+  = Insert k
+  | Decide Label
 
-enterInjective : (AEnter k = AEnter x) -> (k = x)
+enterInjective : (Insert k = Insert x) -> (k = x)
 enterInjective Refl = Refl
 
-selectInjective : (ASelect l = ASelect x) -> (l = x)
+selectInjective : (Decide l = Decide x) -> (l = x)
 selectInjective Refl = Refl
 
 public export
 Eq k => Eq (Action k) where
-  (==) (AEnter x)  (AEnter x')  = x == x'
-  (==) (ASelect l) (ASelect l') = l == l'
+  (==) (Insert x)  (Insert x')  = x == x'
+  (==) (Decide l) (Decide l') = l == l'
   (==) _           _            = False
 
 public export
 DecEq k => DecEq (Action k) where
-  decEq (AEnter x)  (AEnter x')  with (x ?= x')
-    decEq (AEnter x)  (AEnter x)  | Yes Refl = Yes Refl
-    decEq (AEnter x)  (AEnter x') | No cntr = No (cntr . enterInjective)
-  decEq (ASelect l) (ASelect l') with (l ?= l')
-    decEq (ASelect l) (ASelect l)  | Yes Refl = Yes Refl
-    decEq (ASelect l) (ASelect l') | No cntr = No (cntr . selectInjective)
+  decEq (Insert x)  (Insert x')  with (x ?= x')
+    decEq (Insert x)  (Insert x)  | Yes Refl = Yes Refl
+    decEq (Insert x)  (Insert x') | No cntr = No (cntr . enterInjective)
+  decEq (Decide l) (Decide l') with (l ?= l')
+    decEq (Decide l) (Decide l)  | Yes Refl = Yes Refl
+    decEq (Decide l) (Decide l') | No cntr = No (cntr . selectInjective)
   decEq _           _            = ?action_decEq_rest
 
 ---- Full inputs
@@ -141,8 +141,8 @@ Input k = (Name, Action k)
 
 public export
 dummify : Input Concrete -> Input Symbolic
-dummify (n, AEnter (AConcrete {a'} _)) = (n, AEnter (ASymbolic a'))
-dummify (n, ASelect l)                 = (n, ASelect l)
+dummify (n, Insert (Value {a'} _)) = (n, Insert (Symbol a'))
+dummify (n, Decide l)                 = (n, Decide l)
 
 -- public export
 -- Eq k => Eq (Input k) where
@@ -165,4 +165,4 @@ Option = (Name, Label)
 
 export
 fromOption : Option -> Input b
-fromOption (n, l) = (n, ASelect l)
+fromOption (n, l) = (n, Decide l)

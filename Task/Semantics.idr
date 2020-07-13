@@ -97,15 +97,15 @@ normalise (Assign b l) = do
 public export
 handle' : MonadState (State h) m =>
   Editor h a -> Concrete -> m (Either NotApplicable (Editor h a))
-handle' (Enter {a} {ok}) (AConcrete {a'} {ok'} v') with (decBasic ok ok')
-  handle' (Enter {a} {ok}) (AConcrete {a'=a } {ok'=ok } v') | Yes Refl = okay $ Update v'
-  handle' (Enter {a} {ok}) (AConcrete {a'=a'} {ok'=ok'} v') | No _ = throw $ CouldNotChangeVal a' a
-handle' (Update {a} {ok} v) (AConcrete {a'} {ok'} v') with (decBasic ok ok')
-  handle' (Update {a} {ok} v) (AConcrete {a'=a } {ok'=ok } v') | Yes Refl = okay $ Update v'
-  handle' (Update {a} {ok} v) (AConcrete {a'=a'} {ok'=ok'} v') | No _ = throw $ CouldNotChangeVal a' a
-handle' (Change {a} {ok} v) (AConcrete {a'} {ok'} v') with (decBasic ok ok')
-  handle' (Change {a} {ok} l) (AConcrete {a'=a } {ok'=ok } v') | Yes Refl = modify (write v' l) *> okay (Change l)
-  handle' (Change {a} {ok} l) (AConcrete {a'=a'} {ok'=ok'} v') | No _ = throw $ CouldNotChangeRef a' a
+handle' (Enter {a} {ok}) (Value {a'} {ok'} v') with (decBasic ok ok')
+  handle' (Enter {a} {ok}) (Value {a'=a } {ok'=ok } v') | Yes Refl = okay $ Update v'
+  handle' (Enter {a} {ok}) (Value {a'=a'} {ok'=ok'} v') | No _ = throw $ CouldNotChangeVal a' a
+handle' (Update {a} {ok} v) (Value {a'} {ok'} v') with (decBasic ok ok')
+  handle' (Update {a} {ok} v) (Value {a'=a } {ok'=ok } v') | Yes Refl = okay $ Update v'
+  handle' (Update {a} {ok} v) (Value {a'=a'} {ok'=ok'} v') | No _ = throw $ CouldNotChangeVal a' a
+handle' (Change {a} {ok} v) (Value {a'} {ok'} v') with (decBasic ok ok')
+  handle' (Change {a} {ok} l) (Value {a'=a } {ok'=ok } v') | Yes Refl = modify (write v' l) *> okay (Change l)
+  handle' (Change {a} {ok} l) (Value {a'=a'} {ok'=ok'} v') | No _ = throw $ CouldNotChangeRef a' a
 handle' (View _) c = throw $ CouldNotHandleValue c
 handle' (Watch _) c = throw $ CouldNotHandleValue c
 handle' (Select _) c = throw $ CouldNotHandleValue c
@@ -114,7 +114,7 @@ public export
 handle : MonadState (State h) m =>
   Task h a -> Input Concrete -> m (Either NotApplicable (Task h a))
 ---- Editors
-handle t@(Edit n (Select ts)) (n', ASelect l) = case n ?= n' of
+handle t@(Edit n (Select ts)) (n', Decide l) = case n ?= n' of
   Yes Refl => case lookup l ts of
     Nothing => throw $ CouldNotFind l
     Just t' => do
@@ -123,14 +123,14 @@ handle t@(Edit n (Select ts)) (n', ASelect l) = case n ?= n' of
         else throw $ CouldNotGoTo l
   No _ => throw $ CouldNotMatch n n'
 --FIXME: Why is this case needed for proofs? It is covered by the last case below...
-handle t@(Edit n (Select ts)) i@(n', AEnter c) = throw $ CouldNotHandle i
+handle t@(Edit n (Select ts)) i@(n', Insert c) = throw $ CouldNotHandle i
 --FIXME: Does this allow sending Enter actions to unnamed editors??
-handle (Edit n e) (n', AEnter c) = case n ?= n' of
+handle (Edit n e) (n', Insert c) = case n ?= n' of
   Yes Refl => do
     e' <- handle' e c
     rethrow e' $ Edit n
   No _ => throw $ CouldNotMatch n n'
-handle (Edit n e) i@(n', ASelect l) = throw $ CouldNotHandle i
+handle (Edit n e) i@(n', Decide l) = throw $ CouldNotHandle i
 ---- Pass
 handle (Trans e1 t2) i = do
   t2' <- handle t2 i

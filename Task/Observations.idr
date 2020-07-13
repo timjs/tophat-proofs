@@ -94,17 +94,17 @@ options (_)                  = []
 
 public export
 inputs' : Editor h a -> List Symbolic
-inputs' (Enter {a})    = [ASymbolic a]
-inputs' (Update {a} _) = [ASymbolic a]
+inputs' (Enter {a})    = [Symbol a]
+inputs' (Update {a} _) = [Symbol a]
 inputs' (View {a} _)   = []
 inputs' (Select _)     = [] --> selections do not have `IEnter` actions and are handles separately
-inputs' (Change {a} _) = [ASymbolic a]
+inputs' (Change {a} _) = [Symbol a]
 inputs' (Watch {a} _)  = []
 
 public export
 inputs : Task h a -> State h -> List (Input Symbolic)
-inputs (Edit n (Select ts))  _ = map (\l => (n, ASelect l)) (labels ts) --> [ (n, ASelect l) | l <- labels ts ]
-inputs (Edit n e)            s = map (\d => (n, AEnter d)) (inputs' e) --> [ (n, AEnter d) | d <- inputs' e ]
+inputs (Edit n (Select ts))  _ = map (\l => (n, Decide l)) (labels ts) --> [ (n, Decide l) | l <- labels ts ]
+inputs (Edit n e)            s = map (\d => (n, Insert d)) (inputs' e) --> [ (n, Insert d) | d <- inputs' e ]
 inputs (Trans _ t2)          s = inputs t2 s
 inputs (Pair t1 t2)          s = inputs t1 s ++ inputs t2 s
 inputs (Done _)              _ = []
