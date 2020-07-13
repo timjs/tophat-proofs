@@ -27,7 +27,7 @@ usefulness (Done v)             = Right (uninhabited, Left ItIsJust)
 usefulness (Choose t1 t2)       = ?usefulness_rhs_4
 usefulness Fail                 = Left (Refl, andNotIsNotOr (uninhabited, uninhabited)) --absurd (Left IsNonEmpty))
 usefulness (Trans f t2)         with (usefulness {s} t2)
-  usefulness (Trans f t2)       | Left  (yes, nop) = Left (yes, ?usefulness_rhs_6_rhs_1)
+  usefulness (Trans f t2)       | Left  (yes, nop) = Left  (yes, ?usefulness_rhs_6_rhs_1)
   usefulness (Trans f t2)       | Right (nop, yes) = Right (nop, ?usefulness_rhs_6_rhs_2)
 usefulness (Step t1 c)          = ?usefulness_rhs_7
 usefulness (Assert p)           = Right (uninhabited, Left ItIsJust)

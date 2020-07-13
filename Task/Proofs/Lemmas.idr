@@ -63,8 +63,10 @@ notJustIsNothing {x = Nothing}  _ = Refl
 notJustIsNothing {x = (Just _)} f = void (f ItIsJust)
 
 export
-mapIsJust : {f : a -> b} -> IsJust x -> IsJust (map f x)
-mapIsJust ItIsJust = ItIsJust
+mapIsJust : {f : a -> b} -> IsJust (map f x) -> IsJust x
+mapIsJust prf = ?mapIsJust_rhs
+-- mapIsJust = ?mapIsJust_rhs
+-- mapIsJust ItIsJust = ItIsJust
 
 export
 map_over_nothing_is_nothing : {x : Maybe a} -> (map f x = Nothing) -> (x = Nothing)
