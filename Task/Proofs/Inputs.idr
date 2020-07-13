@@ -21,30 +21,30 @@ inputIsHandled t i elem = ?inputIsHandled_rhs
 
 handleIsPossible : {auto s : State h} -> (t : Task h a) -> (i : Input Concrete) -> IsRight (handles s t i) -> Elem (dummify i) (inputs t s)
 ---- Modifiable editors
-handleIsPossible (Edit n Enter)       (n', AEnter c) prf with (n == n')
-  handleIsPossible (Edit n Enter)       (n', AEnter c) prf | True = ?Here1
-  handleIsPossible (Edit n Enter)       (n', AEnter c) prf | False = absurd prf
+handleIsPossible (Edit n Enter)       (n', AEnter c) prf with (n ?= n')
+  handleIsPossible (Edit n Enter)       (n , AEnter c) prf | Yes Refl = ?Here1
+  handleIsPossible (Edit n Enter)       (n', AEnter c) prf | No cntr = absurd prf
 handleIsPossible (Edit n Enter)       (n', ASelect l) prf = absurd prf
-handleIsPossible (Edit n (Update v))  (n', AEnter c) prf with (n == n')
-  handleIsPossible (Edit n (Update v))  (n', AEnter c) prf | True = ?Here2
-  handleIsPossible (Edit n (Update v))  (n', AEnter c) prf | False = absurd prf
+handleIsPossible (Edit n (Update v))  (n', AEnter c) prf with (n ?= n')
+  handleIsPossible (Edit n (Update v))  (n , AEnter c) prf | Yes Refl = ?Here2
+  handleIsPossible (Edit n (Update v))  (n', AEnter c) prf | No cntr = absurd prf
 handleIsPossible (Edit n (Update v))  (n', ASelect l) prf = absurd prf
 handleIsPossible (Edit n (Select ts)) (n', AEnter v) prf = absurd prf
-handleIsPossible (Edit n (Select ts)) (n', ASelect l) prf with (n == n')
-  handleIsPossible (Edit n (Select ts)) (n', ASelect l) prf | True = ?something_complicated
-  handleIsPossible (Edit n (Select ts)) (n', ASelect l) prf | False = absurd prf
-handleIsPossible (Edit n (Change r))  (n', AEnter c) prf with (n == n')
-  handleIsPossible (Edit n (Change r))  (n', AEnter c) prf | True = ?Here3
-  handleIsPossible (Edit n (Change r))  (n', AEnter c) prf | False = absurd prf
+handleIsPossible (Edit n (Select ts)) (n', ASelect l) prf with (n ?= n')
+  handleIsPossible (Edit n (Select ts)) (n , ASelect l) prf | Yes Refl = ?something_complicated
+  handleIsPossible (Edit n (Select ts)) (n', ASelect l) prf | No cntr = absurd prf
+handleIsPossible (Edit n (Change r))  (n', AEnter c) prf with (n ?= n')
+  handleIsPossible (Edit n (Change r))  (n , AEnter c) prf | Yes Refl = ?Here3
+  handleIsPossible (Edit n (Change r))  (n', AEnter c) prf | No cntr = absurd prf
 handleIsPossible (Edit n (Change r))  (n', ASelect l) prf = absurd prf
 ---- View-only editors
-handleIsPossible (Edit n (View v))    (n', AEnter c) prf with (n == n')
-  handleIsPossible (Edit n (View v))    (n', AEnter c) prf | True = absurd prf
-  handleIsPossible (Edit n (View v))    (n', AEnter c) prf | False = absurd prf
+handleIsPossible (Edit n (View v))    (n', AEnter c) prf with (n ?= n')
+  handleIsPossible (Edit n (View v))    (n , AEnter c) prf | Yes Refl = absurd prf
+  handleIsPossible (Edit n (View v))    (n', AEnter c) prf | No cntr = absurd prf
 handleIsPossible (Edit n (View v))    (n', ASelect l) prf = absurd prf
-handleIsPossible (Edit n (Watch r))   (n', AEnter c) prf with (n == n')
-  handleIsPossible (Edit n (Watch r))   (n', AEnter c) prf | True = absurd prf
-  handleIsPossible (Edit n (Watch r))   (n', AEnter c) prf | False = absurd prf
+handleIsPossible (Edit n (Watch r))   (n', AEnter c) prf with (n ?= n')
+  handleIsPossible (Edit n (Watch r))   (n , AEnter c) prf | Yes Refl = absurd prf
+  handleIsPossible (Edit n (Watch r))   (n', AEnter c) prf | No cntr = absurd prf
 handleIsPossible (Edit n (Watch r))   (n', ASelect l) prf = absurd prf
 ---- Combinators
 handleIsPossible (Pair t1 t2)         (n', a) prf = ?handleIsPossible_rhs_2

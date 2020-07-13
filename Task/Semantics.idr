@@ -114,23 +114,23 @@ public export
 handle : MonadState (State h) m =>
   Task h a -> Input Concrete -> m (Either NotApplicable (Task h a))
 ---- Editors
-handle t@(Edit n (Select ts)) (n', ASelect l) = if n == n'
-  then case lookup l ts of
+handle t@(Edit n (Select ts)) (n', ASelect l) = case n ?= n' of
+  Yes Refl => case lookup l ts of
     Nothing => throw $ CouldNotFind l
     Just t' => do
       let os = options t
       if (n, l) `elem` os
         then okay $ t'
         else throw $ CouldNotGoTo l
-  else throw $ CouldNotMatch n n'
+  No _ => throw $ CouldNotMatch n n'
 --FIXME: Why is this case needed for proofs? It is covered by the last case below...
 handle t@(Edit n (Select ts)) i@(n', AEnter c) = throw $ CouldNotHandle i
 --FIXME: Does this allow sending Enter actions to unnamed editors??
-handle (Edit n e) (n', AEnter c) = if n == n'
-  then do
+handle (Edit n e) (n', AEnter c) = case n ?= n' of
+  Yes Refl => do
     e' <- handle' e c
     rethrow e' $ Edit n
-  else throw $ CouldNotMatch n n'
+  No _ => throw $ CouldNotMatch n n'
 handle (Edit n e) i@(n', ASelect l) = throw $ CouldNotHandle i
 ---- Pass
 handle (Trans e1 t2) i = do
