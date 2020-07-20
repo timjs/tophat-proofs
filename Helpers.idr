@@ -33,6 +33,7 @@ public export
 public export
 (<>) : Type -> Type -> Type
 (<>) a b = (a /\ Not b) \/ (Not a /\ b)
+-- (<>) a b = Not a <-> b
 
 public export
 (<->) : Type -> Type -> Type
@@ -78,3 +79,8 @@ data IsRight : Either e a -> Type where
 public export
 Uninhabited (IsRight (Left e)) where
   uninhabited ItIsRight impossible
+
+public export
+isItRight : (v : Either e a) -> Dec (IsRight v)
+isItRight (Right x) = Yes ItIsRight
+isItRight (Left x)  = No absurd
