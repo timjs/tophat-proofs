@@ -67,11 +67,6 @@ and_merge_inh (p_x, p_y) = rewrite p_x in rewrite p_y in Refl
 ---- On maybes -----------------------------------------------------------------
 
 export
-notJustIsNothing : {x : Maybe a} -> Not (IsJust x) -> (x = Nothing)
-notJustIsNothing {x = Nothing}  _ = Refl
-notJustIsNothing {x = (Just _)} f = void (f ItIsJust)
-
-export
 mapIsJust : {f : a -> b} -> IsJust (map f x) -> IsJust x
 mapIsJust prf = ?mapIsJust_rhs
 -- mapIsJust = ?mapIsJust_rhs
@@ -97,11 +92,6 @@ pair_results_nothing {x = Just _ } {y = Nothing} prf = Right Refl
 pair_results_nothing {x = Just _ } {y = Just _ } prf = Left (absurd prf)
 
 ---- On lists ------------------------------------------------------------------
-
-export
-notNonEmptyIsNil: {l : List a} -> Not (NonEmpty l) -> (l = [])
-notNonEmptyIsNil {l = []}      f = Refl
-notNonEmptyIsNil {l = x :: xs} f = void (f IsNonEmpty)
 
 export
 elemInAppend : {l1 : List a} -> {l2 : List a} -> Elem x l1 \/ Elem x l2 -> Elem x (l1 ++ l2)

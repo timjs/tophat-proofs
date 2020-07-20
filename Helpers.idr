@@ -1,7 +1,9 @@
 module Helpers
 
 import public Decidable.Equality
-import Data.Either
+import public Data.Either
+import public Data.List
+import public Data.Maybe
 
 %default total
 
@@ -40,8 +42,8 @@ public export
 (<->) a b = (a -> b, b -> a)
 
 public export
-iff_sym : (a <-> b) -> (b <-> a)
-iff_sym (p_a, p_b) = (p_b, p_a)
+iff : (a <-> b) -> (b <-> a)
+iff (p_a, p_b) = (p_b, p_a)
 
 ---- Habited or Unhabited ------------------------------------------------------
 --FIXME: here because not yet in Data.Bool and Data.Maybe in 0.2.0...
@@ -70,6 +72,42 @@ public export
 Uninhabited (Right x = Left e) where
   uninhabited Refl impossible
 
+---- IsItTrue or IsItFalse -----------------------------------------------------
+
+public export
+IsTrue : Bool -> Type
+IsTrue x = x = True
+
+public export
+isItTrue : (b : Bool) -> Dec (IsTrue b)
+isItTrue True  = Yes Refl
+isItTrue False = No absurd
+
+public export
+IsFalse : Bool -> Type
+IsFalse x = x = False
+
+public export
+isItFalse : (b : Bool) -> Dec (IsFalse b)
+isItFalse True  = No absurd
+isItFalse False = Yes Refl
+
+---- IsItJust or IsItNothing ---------------------------------------------------
+
+public export
+IsNothing : Maybe a -> Type
+IsNothing x = x = Nothing
+
+public export
+isItNothing : (m : Maybe a) -> Dec (IsNothing m)
+isItNothing (Nothing) = Yes Refl
+isItNothing (Just _)  = No absurd
+
+export
+notJustIsNothing : {m : Maybe a} -> Not (IsJust m) -> IsNothing m
+notJustIsNothing {m = Nothing}  _ = Refl
+notJustIsNothing {m = (Just _)} f = void (f ItIsJust)
+
 ---- IsItRight or IsItLeft -----------------------------------------------------
 
 public export
@@ -84,3 +122,32 @@ public export
 isItRight : (v : Either e a) -> Dec (IsRight v)
 isItRight (Right x) = Yes ItIsRight
 isItRight (Left x)  = No absurd
+
+---- IsItNil or IsItCon -----------------------------------------------------
+
+public export
+IsNil : List a -> Type
+IsNil xs = xs = []
+
+public export
+isItNil : (l : List a) -> Dec (IsNil l)
+isItNil []       = Yes Refl
+isItNil (_ :: _) = No absurd
+
+public export
+data IsCons : List a -> Type where
+  ItIsCons : IsCons (x :: xs)
+
+public export
+Uninhabited (IsCons []) where
+  uninhabited ItIsCons impossible
+
+public export
+isItCons : (l : List a) -> Dec (IsCons l)
+isItCons []       = No absurd
+isItCons (_ :: _) = Yes ItIsCons
+
+export
+notConsIsNil: {l : List a} -> Not (IsCons l) -> IsNil l
+notConsIsNil {l = []}      nope = Refl
+notConsIsNil {l = x :: xs} nope = void (nope ItIsCons)
