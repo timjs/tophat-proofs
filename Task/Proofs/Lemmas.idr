@@ -2,9 +2,12 @@ module Task.Proofs.Lemmas
 
 import Helpers
 import Data.List
+import Data.List.Elem
 import Data.List.Quantifiers
 import Data.Maybe
 import Task.Observations
+
+%default total
 
 ---- On evidence ---------------------------------------------------------------
 
@@ -21,8 +24,14 @@ andNotIsNotOr : (Not a /\ Not b) -> Not (a \/ b)
 andNotIsNotOr (f, g) (Left x)  = f x
 andNotIsNotOr (f, g) (Right y) = g y
 
-notAndIsOr : Not (a /\ b) -> (Not a \/ Not b)
-notAndIsOr f = Left (\x => ?notAndIsOr_rhs)
+public export
+orIsNotAnd : (a \/ b) -> Not (Not a /\ Not b)
+orIsNotAnd (Left  x) (f, g) = f x
+orIsNotAnd (Right y) (f, g) = g y
+
+public export
+implyIsNotReverse : (a -> b) -> (Not b -> Not a)
+implyIsNotReverse prf cntr x = cntr (prf x)
 
 ---- On booleans ---------------------------------------------------------------
 
@@ -93,6 +102,14 @@ export
 notNonEmptyIsNil: {l : List a} -> Not (NonEmpty l) -> (l = [])
 notNonEmptyIsNil {l = []}      f = Refl
 notNonEmptyIsNil {l = x :: xs} f = void (f IsNonEmpty)
+
+export
+elemInAppend : {l1 : List a} -> {l2 : List a} -> Elem x l1 \/ Elem x l2 -> Elem x (l1 ++ l2)
+elemInAppend {l1 = x :: xs} {l2 = l2} (Left Here)       = Here
+elemInAppend {l1 = y :: xs} {l2 = l2} (Left (There x))  = There (elemInAppend (Left x))
+elemInAppend {l1 = l1} {l2 = x :: xs} (Right Here)      = ?h1
+elemInAppend {l1 = l1} {l2 = y :: xs} (Right (There x)) = ?h2
+elemInAppend {l1 = l1} {l2 = l2} x = ?h0
 
 ---- All
 
