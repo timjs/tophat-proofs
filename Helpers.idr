@@ -1,6 +1,7 @@
 module Helpers
 
 import public Decidable.Equality
+-- import public Data.Bool
 import public Data.Either
 import public Data.List
 import public Data.Maybe
@@ -72,6 +73,16 @@ public export
 Uninhabited (Right x = Left e) where
   uninhabited Refl impossible
 
+export
+notTrueIsFalse : {1 b : Bool} -> Not (b = True) -> b = False
+notTrueIsFalse {b = True}  nope = absurd (nope Refl)
+notTrueIsFalse {b = False} nope = Refl
+
+export
+notFalseIsTrue : {1 b : Bool} -> Not (b = False) -> b = True
+notFalseIsTrue {b = True}  nope = Refl
+notFalseIsTrue {b = False} nope = absurd (nope Refl)
+
 ---- IsItTrue or IsItFalse -----------------------------------------------------
 
 public export
@@ -79,7 +90,7 @@ IsTrue : Bool -> Type
 IsTrue x = x = True
 
 public export
-isItTrue : (b : Bool) -> Dec (IsTrue b)
+isItTrue : (1 b : Bool) -> Dec (IsTrue b)
 isItTrue True  = Yes Refl
 isItTrue False = No absurd
 
@@ -88,11 +99,21 @@ IsFalse : Bool -> Type
 IsFalse x = x = False
 
 public export
-isItFalse : (b : Bool) -> Dec (IsFalse b)
+isItFalse : (1 b : Bool) -> Dec (IsFalse b)
 isItFalse True  = No absurd
 isItFalse False = Yes Refl
 
 ---- IsItJust or IsItNothing ---------------------------------------------------
+
+-- IsJust    NotJust
+-- IsTrue    NotTrue
+-- IsRight   NotRight
+-- IsCons    NotCons
+-- IsNil     NotNil
+-- IsEmpty   NonEmpty
+-- HasElems  HasntElems
+-- IsntEmpty IsEmpty
+-- NonEmpty  Empty
 
 public export
 IsNothing : Maybe a -> Type
@@ -120,8 +141,8 @@ Uninhabited (IsRight (Left e)) where
 
 public export
 isItRight : (v : Either e a) -> Dec (IsRight v)
-isItRight (Right x) = Yes ItIsRight
-isItRight (Left x)  = No absurd
+isItRight (Right _) = Yes ItIsRight
+isItRight (Left  _) = No absurd
 
 ---- IsItNil or IsItCon -----------------------------------------------------
 
@@ -135,12 +156,20 @@ isItNil []       = Yes Refl
 isItNil (_ :: _) = No absurd
 
 public export
-data IsCons : List a -> Type where
-  ItIsCons : IsCons (x :: xs)
+IsCons : List a -> Type
+IsCons = NonEmpty
 
 public export
-Uninhabited (IsCons []) where
-  uninhabited ItIsCons impossible
+ItIsCons : IsCons (x :: xs)
+ItIsCons = IsNonEmpty
+
+-- public export
+-- data IsCons : List a -> Type where
+--   ItIsCons : IsCons (x :: xs)
+
+-- public export
+-- Uninhabited (IsCons []) where
+--   uninhabited ItIsCons impossible
 
 public export
 isItCons : (l : List a) -> Dec (IsCons l)
@@ -149,5 +178,5 @@ isItCons (_ :: _) = Yes ItIsCons
 
 export
 notConsIsNil: {l : List a} -> Not (IsCons l) -> IsNil l
-notConsIsNil {l = []}      nope = Refl
-notConsIsNil {l = x :: xs} nope = void (nope ItIsCons)
+notConsIsNil {l = []}     nope = Refl
+notConsIsNil {l = _ :: _} nope = void (nope ItIsCons)

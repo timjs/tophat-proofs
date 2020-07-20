@@ -13,11 +13,14 @@ import Task.Observations
 
 ||| Having both a proof that `p` and that `Not p` is not possible.
 not_both_true_and_false : Not (p, Not p) -- : (p, p -> Void) -> Void
-not_both_true_and_false (p, not_p) = not_p p
+not_both_true_and_false (prf, nope) = nope prf
 
 public export
 notOrIsAndNot : Not (a \/ b) -> (Not a /\ Not b)
-notOrIsAndNot f = (\x => f (Left x), \x => f (Right x))
+notOrIsAndNot nope = (\prf => nope (Left prf), \prf => nope (Right prf))
+
+-- notAndIsOrNot : Not (a /\ b) -> (Not a \/ Not b)
+--> Not provable in intuitionistic logic
 
 public export
 andNotIsNotOr : (Not a /\ Not b) -> Not (a \/ b)
@@ -31,7 +34,7 @@ orIsNotAnd (Right y) (f, g) = g y
 
 public export
 implyIsNotReverse : (a -> b) -> (Not b -> Not a)
-implyIsNotReverse prf cntr x = cntr (prf x)
+implyIsNotReverse prf nope x = nope (prf x)
 
 ---- On booleans ---------------------------------------------------------------
 
@@ -41,28 +44,28 @@ export
 and_split : (p : a -> Bool) -> (x : a) -> (y : a) -> (p x && p y = True) -> (p x = True) /\ (p y = True)
 and_split p x y prf with (p x ?= True, p y ?= True)
   and_split p x y prf | (Yes prf_x, Yes prf_y) = (prf_x, prf_y)
-  and_split p x y prf | (Yes prf_x, No  not_y) with (p y)
-    and_split p x y prf | (Yes prf_x, No  not_y) | True = absurd (not_y Refl)
-    -- and_split p x y prf | (Yes prf_x, No  not_y) | False = rewrite prf_x in ?h...
-    and_split p x y prf | (Yes prf_x, No  not_y) | False with (p x)
-      and_split p x y prf | (Yes prf_x, No  not_y) | False | True  = absurd prf
-      and_split p x y prf | (Yes prf_x, No  not_y) | False | False = absurd prf
-  and_split p x y prf | (No  not_x, Yes prf_y) with (p x)
-    and_split p x y prf | (No  not_x, Yes prf_y) | True = absurd (not_x Refl)
-    and_split p x y prf | (No  not_x, Yes prf_y) | False with (p y)
-      and_split p x y prf | (No  not_x, Yes prf_y) | False | True  = absurd prf
-      and_split p x y prf | (No  not_x, Yes prf_y) | False | False = absurd prf
-  and_split p x y prf | (No  not_x, No  not_y) with (p x)
-    and_split p x y prf | (No  not_x, No  not_y) | True = absurd (not_x Refl)
-    and_split p x y prf | (No  not_x, No  not_y) | False = absurd prf
+  and_split p x y prf | (Yes prf_x, No nope_y) with (p y)
+    and_split p x y prf | (Yes prf_x, No nope_y) | True = absurd (nope_y Refl)
+    -- and_split p x y prf | (Yes prf_x, No nope_y) | False = rewrite prf_x in ?h...
+    and_split p x y prf | (Yes prf_x, No nope_y) | False with (p x)
+      and_split p x y prf | (Yes prf_x, No nope_y) | False | True  = absurd prf
+      and_split p x y prf | (Yes prf_x, No nope_y) | False | False = absurd prf
+  and_split p x y prf | (No nope_x, Yes prf_y) with (p x)
+    and_split p x y prf | (No nope_x, Yes prf_y) | True = absurd (nope_x Refl)
+    and_split p x y prf | (No nope_x, Yes prf_y) | False with (p y)
+      and_split p x y prf | (No nope_x, Yes prf_y) | False | True  = absurd prf
+      and_split p x y prf | (No nope_x, Yes prf_y) | False | False = absurd prf
+  and_split p x y prf | (No nope_x, No nope_y) with (p x)
+    and_split p x y prf | (No nope_x, No nope_y) | True = absurd (nope_x Refl)
+    and_split p x y prf | (No nope_x, No nope_y) | False = absurd prf
 
 export
 and_merge : {p : a -> Bool} -> (p x = True) /\ (p y = True) -> (p x && p y = True)
-and_merge {p} (p_x, p_y) = rewrite p_x in rewrite p_y in Refl
+and_merge {p} (prf_x, prf_y) = rewrite prf_x in rewrite prf_y in Refl
 
 export
 and_merge_inh : {p1 : a -> Bool} -> {p2 : b -> Bool} -> (p1 x = True) /\ (p2 y = True) -> (p1 x && p2 y = True)
-and_merge_inh (p_x, p_y) = rewrite p_x in rewrite p_y in Refl
+and_merge_inh (prf_x, prf_y) = rewrite prf_x in rewrite prf_y in Refl
 
 ---- On maybes -----------------------------------------------------------------
 
@@ -74,7 +77,7 @@ mapIsJust prf = ?mapIsJust_rhs
 
 export
 map_over_nothing_is_nothing : {x : Maybe a} -> (map f x = Nothing) -> (x = Nothing)
-map_over_nothing_is_nothing {x = Nothing} _    = Refl
+map_over_nothing_is_nothing {x = Nothing}  _   = Refl
 map_over_nothing_is_nothing {x = (Just x)} prf = absurd prf
 
 export
