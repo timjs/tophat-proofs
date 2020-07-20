@@ -1,8 +1,6 @@
 module Task.Semantics
 
 import Helpers
-import Control.Monad.State
-import Control.Monad.Supply
 import Data.List
 import Task.Syntax
 import Task.Observations
@@ -23,42 +21,26 @@ data NotApplicable
   | CouldNotHandle (Input Concrete)
   | CouldNotHandleValue Concrete
 
-public export
-okay : Monad m => a -> m (Either e a)
-okay = pure . Right
-
-public export
-throw : Monad m => e -> m (Either e a)
-throw = pure . Left
-
-public export
-rethrow : Monad m => Either e a -> (a -> b) -> m (Either e b)
-rethrow (Left e)  _ = throw e
-rethrow (Right x) f = okay $ f x
-
 ---- Normalisation -------------------------------------------------------------
 
+{-
 public export
-normalise : MonadSupply Nat m => MonadState (State h) m =>
-  Task h a -> m (Task h a)
+normalise : Stream Nat -> Task h a -> State h -> (Task h a, State h)
 ---- Step
-normalise (Step t1 e2) = do
-  t1' <- normalise t1
-  let stay = Step t1' e2
-  mv1 <- gets $ value t1'
-  case mv1 of
-    Nothing => pure stay -- N-StepNone
-    Just v1 => do
+normalise ns (Step t1 e2) s =
+  let (t1', s') = normalise t1 s
+      stay = Step t1' e2
+   in case value t1' s' of
+    Nothing => (stay, s') -- N-StepNone
+    Just v1 =>
       let t2 = e2 v1
       if failing t2
-        then pure stay -- N-StepFail
-        else do
-          let os = options t2
-          if not $ isNil $ os
-            then pure stay -- N-StepWait
-            else assert_total (normalise t2) -- N-StepCont
+        then (stay, s') -- N-StepFail
+        else if not $ isNil $ options t2
+          then (stay, s') -- N-StepWait
+          else assert_total (normalise t2 s') -- N-StepCont
 ---- Choose
-normalise (Choose t1 t2) = do
+normalise ns (Choose t1 t2) s = do
   t1' <- normalise t1
   mv1 <- gets $ value t1'
   case mv1 of
@@ -70,103 +52,104 @@ normalise (Choose t1 t2) = do
         Just _ => pure t2' -- N-ChooseRight
         Nothing => pure $ Choose t1' t2' -- N-ChooseNone
 ---- Congruences
-normalise (Trans f t2) = pure (Trans f) <*> normalise t2
-normalise (Pair t1 t2) = pure Pair <*> normalise t1 <*> normalise t2
+normalise ns (Trans f t2) s = pure (Trans f) <*> normalise t2
+normalise ns (Pair t1 t2) s = pure Pair <*> normalise t1 <*> normalise t2
 ---- Ready
-normalise t@(Done _) = pure t
-normalise t@(Fail) = pure t
+normalise ns t@(Done _) s = pure t
+normalise ns t@(Fail) s = pure t
 ---- Editors
-normalise t@(Edit Unnamed e) = do
+normalise ns t@(Edit Unnamed e) s = do
     n <- supply
     pure $ Edit (Named n) e
-normalise t@(Edit (Named _) _) = pure t
+normalise ns t@(Edit (Named _) _) s = pure t
 ---- Checks
-normalise (Assert p) = do
+normalise ns (Assert p) s = do
     pure $ Done p
 ---- References
 -- normalise (Share b) = do
 --   l <- Store.alloc b --XXX: raise?
 --   pure $ Done l
-normalise (Assign b l) = do
+normalise ns (Assign b l) s = do
   modify (write b l)
   -- tell [pack r]
   pure $ Done ()
+-}
 
 ---- Handling ------------------------------------------------------------------
 
 public export
-handle' : MonadState (State h) m =>
-  Editor h a -> Concrete -> m (Either NotApplicable (Editor h a))
-handle' (Enter {a} {ok}) (Value {a'} {ok'} v') with (decBasic ok ok')
-  handle' (Enter {a} {ok}) (Value {a'=a } {ok'=ok } v') | Yes Refl = okay $ Update v'
-  handle' (Enter {a} {ok}) (Value {a'=a'} {ok'=ok'} v') | No _ = throw $ CouldNotChangeVal a' a
-handle' (Update {a} {ok} v) (Value {a'} {ok'} v') with (decBasic ok ok')
-  handle' (Update {a} {ok} v) (Value {a'=a } {ok'=ok } v') | Yes Refl = okay $ Update v'
-  handle' (Update {a} {ok} v) (Value {a'=a'} {ok'=ok'} v') | No _ = throw $ CouldNotChangeVal a' a
-handle' (Change {a} {ok} v) (Value {a'} {ok'} v') with (decBasic ok ok')
-  handle' (Change {a} {ok} l) (Value {a'=a } {ok'=ok } v') | Yes Refl = modify (write v' l) *> okay (Change l)
-  handle' (Change {a} {ok} l) (Value {a'=a'} {ok'=ok'} v') | No _ = throw $ CouldNotChangeRef a' a
-handle' (View _) c = throw $ CouldNotHandleValue c
-handle' (Watch _) c = throw $ CouldNotHandleValue c
-handle' (Select _) c = throw $ CouldNotHandleValue c
+handle' : Editor h a -> State h -> Concrete -> Either NotApplicable (Editor h a, State h)
+handle' (Enter {a} {ok}) s (Value {a'} {ok'} v') with (decBasic ok ok')
+  handle' (Enter {a} {ok}) s (Value {a'=a } {ok'=ok } v') | Yes Refl = Right (Update v', s)
+  handle' (Enter {a} {ok}) s (Value {a'=a'} {ok'=ok'} v') | No _ = Left $ CouldNotChangeVal a' a
+handle' (Update {a} {ok} v) s (Value {a'} {ok'} v') with (decBasic ok ok')
+  handle' (Update {a} {ok} v) s (Value {a'=a } {ok'=ok } v') | Yes Refl = Right (Update v', s)
+  handle' (Update {a} {ok} v) s (Value {a'=a'} {ok'=ok'} v') | No _ = Left $ CouldNotChangeVal a' a
+handle' (Change {a} {ok} v) s (Value {a'} {ok'} v') with (decBasic ok ok')
+  handle' (Change {a} {ok} l) s (Value {a'=a } {ok'=ok } v') | Yes Refl = Right (Change l, write v' l s)
+  handle' (Change {a} {ok} l) s (Value {a'=a'} {ok'=ok'} v') | No _ = Left $ CouldNotChangeRef a' a
+handle' (View _) _ c = Left $ CouldNotHandleValue c
+handle' (Watch _) _ c = Left $ CouldNotHandleValue c
+handle' (Select _) _ c = Left $ CouldNotHandleValue c
+
+rethrow : Either e (a, s) -> (Either e a, s)
 
 public export
-handle : MonadState (State h) m =>
-  Task h a -> Input Concrete -> m (Either NotApplicable (Task h a))
+handle : Task h a -> State h -> Input Concrete -> Either NotApplicable (Task h a, State h)
 ---- Editors
-handle t@(Edit n (Select ts)) (n', Decide l) = case n ?= n' of
-  Yes Refl => case lookup l ts of
-    Nothing => throw $ CouldNotFind l
-    Just t' => do
-      if (n, l) `elem` options t
-        then okay $ t'
-        else throw $ CouldNotGoTo l
-  No _ => throw $ CouldNotMatch n n'
+handle t@(Edit n (Select ts)) s (n', Decide l) =
+  case n ?= n' of
+    Yes Refl => case lookup l ts of
+      Just t' => do
+        if (n, l) `elem` options t
+          then Right (t', s)
+          else Left $ CouldNotGoTo l
+      Nothing => Left $ CouldNotFind l
+    No _ => Left $ CouldNotMatch n n'
 --FIXME: Why is this case needed for proofs? It is covered by the last case below...
-handle t@(Edit n (Select ts)) i@(n', Insert c) = throw $ CouldNotHandle i
+handle t@(Edit n (Select ts)) s i@(n', Insert c) =
+  Left $ CouldNotHandle i
 --FIXME: Does this allow sending Enter actions to unnamed editors??
-handle (Edit n e) (n', Insert c) = case n ?= n' of
-  Yes Refl => do
-    e' <- handle' e c
-    rethrow e' $ Edit n
-  No _ => throw $ CouldNotMatch n n'
-handle (Edit n e) i@(n', Decide l) = throw $ CouldNotHandle i
+handle (Edit n e) s (n', Insert c) =
+  case n ?= n' of
+    Yes Refl => case handle' e s c of
+      Right (e', s') => Right (Edit n e', s')
+      Left e => Left e
+    No _ => Left $ CouldNotMatch n n
+handle (Edit n e) s i@(n', Decide l) =
+  Left $ CouldNotHandle  i
 ---- Pass
-handle (Trans e1 t2) i = do
-  t2' <- handle t2 i
-  rethrow t2' $ Trans e1
-handle (Step t1 e2) i = do
-  et1' <- handle t1 i
-  case et1' of
-    Right t1' => okay $ Step t1' e2 -- H-Step
+handle (Trans e1 t2) s i =
+  case handle t2 s i of
+    Right (t2', s') => Right (Trans e1 t2', s')
+    Left e => Left e
+handle (Step t1 e2) s i =
+  case handle t1 s i of
+    Right (t1', s') => Right (Step t1' e2, s') -- H-Step
     Left _ => do
-      mv1 <- gets $ value t1
-      case mv1 of
-        Nothing => throw $ CouldNotContinue
-        Just v1 => do
-          let t2 = e2 v1
-          handle t2 i -- H-StepCont
-handle (Pair t1 t2) i = do
-  et1' <- handle t1 i
-  case et1' of
-    Right t1' => okay $ Pair t1' t2 -- H-PairFirst
-    Left _ => do
-      t2' <- handle t2 i
-      rethrow t2' $ Pair t1 -- H-PairSecond
-handle (Choose t1 t2) i = do
-  et1' <- handle t1 i
-  case et1' of
-    Right t1' => okay $ Choose t1' t2 -- H-ChooseFirst
-    Left _ => do
-      t2' <- handle t2 i
-      rethrow t2' $ Choose t1 -- H-ChoosSecond
+      case value t1 s of
+        Just v1 => handle (e2 v1) s i -- H-StepCont
+        Nothing => Left $ CouldNotContinue
+handle (Pair t1 t2) s i =
+  case handle t1 s i of
+    Right (t1', s') => Right (Pair t1' t2, s') -- H-PairFirst
+    Left _ => case handle t2 s i of
+      Right (t2', s') => Right (Pair t1 t2', s') -- H-PairSecond
+      Left e => Left e
+handle (Choose t1 t2) s i =
+  case handle t1 s i of
+    Right (t1', s') => Right (Choose t1' t2, s') -- H-ChooseFirst
+    Left _ => case handle t2 s i of
+      Right (t2', s') => Right (Choose t1 t2', s')
+      Left e => Left e -- H-ChoosSecond
 ---- Rest
-handle (Done _) i = throw $ CouldNotHandle i
-handle (Fail) i = throw $ CouldNotHandle i
-handle (Assert _) i = throw $ CouldNotHandle i
-handle (Assign _ _) i = throw $ CouldNotHandle i
+handle (Done _) s i = Left $ CouldNotHandle i
+handle (Fail) s i = Left $ CouldNotHandle i
+handle (Assert _) s i = Left $ CouldNotHandle i
+handle (Assign _ _) s i = Left $ CouldNotHandle i
 
 
+{-
 ---- Fixation ------------------------------------------------------------------
 
 fixate : MonadSupply Nat m => MonadState (State h) m =>
@@ -208,3 +191,4 @@ interact t i = do
       -- log Warning e
       pure t
     Right t' => fixate t'
+    -}
