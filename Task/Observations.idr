@@ -27,6 +27,7 @@ value (Choose t1 t2)     s = value t1 s <|> value t2 s
 value (Fail)             _ = Nothing
 value (Step _ _)         _ = Nothing
 value (Assert b)         _ = Just b
+value (Repeat t1)        s = Nothing --< Doesn't have a value because should be normalised
 -- value (Share b)          _ = (Just Loc)
 value (Assign _ _)       _ = Just ()
 
@@ -52,6 +53,7 @@ mutual
   failing (Fail)         = True
   failing (Step t1 _)    = failing t1
   failing (Assert _)     = False
+  failing (Repeat t1)    = failing t1
   -- failing (Share _)      = False
   failing (Assign _ _)   = False
 
@@ -74,6 +76,7 @@ watching (Choose t1 t2) = watching t1 ++ watching t2
 watching (Fail)         = []
 watching (Step t1 _)    = watching t1
 watching (Assert _)     = []
+watching (Repeat t1)    = watching t1
 -- watching (Share _)      = []
 watching (Assign _ _)   = []
 
@@ -88,6 +91,7 @@ options : Task h a -> List Option
 options (Edit n (Select ts)) = map (\l => (n, l)) (labels ts) --> [ (n, l) | l <- labels ts ]
 options (Trans _ t2)         = options t2
 options (Step t1 _)          = options t1
+options (Repeat t1)          = options t1
 options (_)                  = []
 
 ---- Inputs --------------------------------------------------------------------
@@ -114,5 +118,6 @@ inputs (Step t1 e2)          s = inputs t1 s ++ case value t1 s of
                                    Nothing => []
                                    Just v1 => map fromOption (options (e2 v1)) --> [ fromOption o | o <- options (e2 v1) ]
 inputs (Assert _)            _ = []
+inputs (Repeat t1)           s = inputs t1 s
 -- inputs (Share _)            _ = []
 inputs (Assign _ _)          _ = []

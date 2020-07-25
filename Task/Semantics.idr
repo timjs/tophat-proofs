@@ -74,9 +74,12 @@ normalise t@(Edit Unnamed e) s =
   let (n, s') = fresh s
    in (Edit (Named n) e, s')
 normalise t@(Edit (Named _) _) s = (t, s)
----- Checks
+---- Rewrites
 normalise (Assert p) s = (Done p, s)
----- References
+normalise (Repeat t1) s =
+  let (t1', s') = normalise t1 s
+   in (Step t1' (\x => Edit Unnamed (Select ["Repeat" ~> Repeat t1, "Exit" ~> Done x])), s')
+  -- normalise (Step t1 (\x => Edit Unnamed (Select ["Repeat" ~> Repeat t1, "Exit" ~> Done x]))) s <-- Should be equivallent
 -- normalise (Share b) = do
 --   l <- Store.alloc b --XXX: raise?
 --   pure $ Done l
@@ -156,6 +159,7 @@ handle (Choose t1 t2) s i =
 handle (Done _) s i = Left $ CouldNotHandle i
 handle (Fail) s i = Left $ CouldNotHandle i
 handle (Assert _) s i = Left $ CouldNotHandle i
+handle (Repeat _) s i = Left $ CouldNotHandle i
 handle (Assign _ _) s i = Left $ CouldNotHandle i
 
 

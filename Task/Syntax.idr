@@ -58,6 +58,7 @@ mutual
     Step   : (t1 : Task h a') -> (c : a' -> Task h a) -> Task h a
     ---- Asserts
     Assert : (p : Bool) -> Task h Bool
+    Repeat : (t1 : Task h a) -> Task h a
     ---- Stores
     -- Share : {auto ok : IsBasic a} -> a -> Task h (Ref h a)
     Assign : {auto ok : IsBasic a} -> (v : a) -> (r : Ref h a) -> Task h ()
