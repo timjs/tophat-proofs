@@ -1,24 +1,46 @@
+-- An alternative formulation of the `Applicative` interface.
 module Control.Monoidal
 
 %default total
 
+---- Interface -----------------------------------------------------------------
+
 infixl 6 <&>
 infixl 6 <&
-infixl 6 &>
+infixl 6  &>
 
 public export
 interface Functor f => Monoidal f where
   (<&>) : f a -> f b -> f (a, b)
-  -- (<&>) x y = pure (\x, y => (x, y)) <*> x <*> y
-
   skip : f ()
-  -- skip = pure ()
 
-  -- (<&) : f a -> f b -> f a
-  -- (<&) x y = pure fst <*> x <&> y
+public export
+(<&) : Monoidal f => f a -> f b -> f a
+(<&) x y = map fst (x <&> y)
 
-  -- (&>) : f a -> f b -> f b
-  -- (&>) x y = pure snd <*> x <&> y
+public export
+(&>) : Monoidal f => f a -> f b -> f b
+(&>) x y = map snd (x <&> y)
+
+---- Defaults ------------------------------------------------------------------
+
+public export
+pureDefault : Monoidal f => a -> f a
+pureDefault x = map (const x) skip
+
+public export
+applyDefault : Monoidal f => f (a -> b) -> f a -> f b
+applyDefault fg fx = map (\(g, x) => g x) (fg <&> fx)
+
+public export
+skipDefault : Applicative f => f ()
+skipDefault = pure ()
+
+public export
+pairDefault : Applicative f => f a -> f b -> f (a, b)
+pairDefault fa fb = pure MkPair <*> fa <*> fb
+
+---- Implementations -----------------------------------------------------------
 
 public export
 Monoidal Maybe where
@@ -29,11 +51,3 @@ Monoidal Maybe where
 
 -- public export
 -- implementation Monoidal (Either e)
-
--- export
--- applyDefault : Monoidal f => f (a -> b) -> f a -> f b
--- applyDefault fg fx = pure (\(g, x) => g x) <*> fg <&> fx
-
--- export
--- pureDefault : Monoidal f => a -> f a
--- pureDefault x = map (const x) skip
