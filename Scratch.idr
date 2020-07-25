@@ -1,8 +1,46 @@
 module Scratch
 
-import Task.Syntax
+import Data.Nat
+import Data.Vect
+
+----
+
+data Task : a -> Type where
+  Done : a -> Task a
+  Bind : Task a' -> (a' -> Task a) -> Task a
+
+total
+value : Task a -> Maybe a
+value (Done x) = Just x
+value (Bind _ _) = Nothing
+
+total
+failing : Task a -> Bool
+failing (Done x) = False
+failing (Bind t c) = failing t
+
+total
+normalise : Task a -> Task a
+normalise (Done x) = Done x
+normalise (Bind t c) = case value t of
+  Nothing => Bind t c
+  Just v => let t' = c v in if failing t'
+    then Bind t c
+    -- else normalise (c v)
+    else normalise t'
+
+----
 
 
+reverse : (xs : Vect len elem) -> Vect len elem
+reverse xs = go [] xs
+  where
+    go : (_ : Vect n elem) -> (_ : Vect m elem) -> Vect (n + m) elem
+    go         acc []        = rewrite plusZeroRightNeutral n in acc
+    go {m=S m} acc (x :: xs) = rewrite sym $ plusSuccRightSucc n m in go (x::acc) xs
+
+-----
+{-
 sym' : {auto con : Type -> Type} -> {auto inj : (con a = con b) -> (a = b)} -> {p : con a} -> {q : con b} -> (p = q) -> (q = p)
 sym' prf = ?sym_rhs
 
@@ -31,3 +69,4 @@ handleIsPossible (Pair t1 t2) i prf with (handles s t1 i)
   handleIsPossible (Pair t1 t2) i prf | (s', Left e) = ?handleIsPossible_rhs_2_rhs_2
   handleIsPossible (Pair t1 t2) i prf | (s', Right t1') = ?handleIsPossible_rhs_2_rhs_3
 handleIsPossible t i x = ?handleIsPossible_rhs
+    -}
