@@ -1,6 +1,7 @@
 module Helpers
 
 import public Decidable.Equality
+import public Control.Monoidal
 -- import public Data.Bool
 import public Data.Either
 import public Data.List
@@ -82,6 +83,14 @@ export
 notFalseIsTrue : {1 b : Bool} -> Not (b = False) -> b = True
 notFalseIsTrue {b = True}  nope = Refl
 notFalseIsTrue {b = False} nope = absurd (nope Refl)
+
+---- Operators -----------------------------------------------------------------
+
+infixr 0 ~>
+
+public export
+(~>) : a -> b -> (a, b)
+(~>) x y = (x, y)
 
 ---- IsItTrue or IsItFalse -----------------------------------------------------
 
