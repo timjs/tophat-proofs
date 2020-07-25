@@ -23,57 +23,67 @@ data NotApplicable
 
 ---- Normalisation -------------------------------------------------------------
 
-{-
+get : (Stream Nat, State h) -> State h
+get = snd
+
+modify : (State h -> State h) -> (Stream Nat, State h) -> (Stream Nat, State h)
+modify f (ns, s) = (ns, f s)
+
+fresh : (Stream Nat, State h) -> (Nat, (Stream Nat, State h))
+fresh (n :: ns, s) = (n, (ns, s))
+
 public export
-normalise : Stream Nat -> Task h a -> State h -> (Task h a, State h)
+normalise : Task h a -> (Stream Nat, State h) -> (Task h a, (Stream Nat, State h))
 ---- Step
-normalise ns (Step t1 e2) s =
+normalise (Step t1 e2) s =
   let (t1', s') = normalise t1 s
       stay = Step t1' e2
-   in case value t1' s' of
+   in case value t1' (snd s') of
     Nothing => (stay, s') -- N-StepNone
     Just v1 =>
       let t2 = e2 v1
-      if failing t2
+       in if failing t2
         then (stay, s') -- N-StepFail
         else if not $ isNil $ options t2
           then (stay, s') -- N-StepWait
-          else assert_total (normalise t2 s') -- N-StepCont
+          --> Note that Idris2 can't prove termination when writing `t'` instead of `e2 v1`, see #493
+          else normalise (e2 v1) s' -- N-StepCont
 ---- Choose
-normalise ns (Choose t1 t2) s = do
-  t1' <- normalise t1
-  mv1 <- gets $ value t1'
-  case mv1 of
-    Just _ => pure t1' -- N-ChooseLeft
-    Nothing => do
-      t2' <- normalise t2
-      mv2 <- gets $ value t2'
-      case mv2 of
-        Just _ => pure t2' -- N-ChooseRight
-        Nothing => pure $ Choose t1' t2' -- N-ChooseNone
+normalise (Choose t1 t2) s =
+  let (t1', s') = normalise t1 s
+   in case value t1' (get s') of
+    Just _ => (t1', s') -- N-ChooseLeft
+    Nothing =>
+      let (t2', s'') = normalise t2 s'
+       in case value t2' (get s'') of
+        Just _ => (t2', s'') -- N-ChooseRight
+        Nothing => (Choose t1' t2', s'') -- N-ChooseNone
 ---- Congruences
-normalise ns (Trans f t2) s = pure (Trans f) <*> normalise t2
-normalise ns (Pair t1 t2) s = pure Pair <*> normalise t1 <*> normalise t2
+normalise (Trans f t2) s =
+  let (t2', s') = normalise t2 s
+   in (Trans f t2', s')
+normalise (Pair t1 t2) s =
+  let (t1', s')  = normalise t1 s
+      (t2', s'') = normalise t2 s'
+   in (Pair t1' t2', s'')
 ---- Ready
-normalise ns t@(Done _) s = pure t
-normalise ns t@(Fail) s = pure t
+normalise t@(Done _) s = (t, s)
+normalise t@(Fail) s = (t, s)
 ---- Editors
-normalise ns t@(Edit Unnamed e) s = do
-    n <- supply
-    pure $ Edit (Named n) e
-normalise ns t@(Edit (Named _) _) s = pure t
+normalise t@(Edit Unnamed e) s =
+  let (n, s') = fresh s
+   in (Edit (Named n) e, s')
+normalise t@(Edit (Named _) _) s = (t, s)
 ---- Checks
-normalise ns (Assert p) s = do
-    pure $ Done p
+normalise (Assert p) s = (Done p, s)
 ---- References
 -- normalise (Share b) = do
 --   l <- Store.alloc b --XXX: raise?
 --   pure $ Done l
-normalise ns (Assign b l) s = do
-  modify (write b l)
+normalise (Assign b l) s =
+  let s' = modify (write b l) s
+   in (Done (), s')
   -- tell [pack r]
-  pure $ Done ()
--}
 
 ---- Handling ------------------------------------------------------------------
 
