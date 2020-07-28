@@ -83,28 +83,26 @@ labels : List (Label, Task h a) -> List Label
 labels = map fst . filter (not . failing . snd) --> [ l | (l, t) <- _, not (failing t) ] but using this in proofs is tedious
 
 public export
-options : Task h a -> List Option
-options (Edit n (Select ts)) = map (\l => (n, l)) (labels ts) --> [ (n, l) | l <- labels ts ]
+options : (Task h a) -> List (Input Symbolic)
+options (Edit n (Select ts)) = map (\l => Option n l) (labels ts) --> [ (n, l) | l <- labels ts ]
 options (Trans _ t2)         = options t2
 options (Step t1 _)          = options t1
-options (Repeat t1)          = options t1
 options (_)                  = []
 
 ---- Inputs --------------------------------------------------------------------
 
 public export
-inputs' : Editor h a -> List Symbolic
-inputs' (Enter {a})    = [Symbol a]
-inputs' (Update {a} _) = [Symbol a]
-inputs' (View {a} _)   = []
-inputs' (Select _)     = [] --> selections do not have `Insert` inputs and are handles separately
-inputs' (Change {a} _) = [Symbol a]
-inputs' (Watch {a} _)  = []
+inputs' : Nat -> Editor h a -> List (Input Symbolic)
+inputs' k (Enter {a})    = [Insert k (Symbol a)]
+inputs' k (Update {a} _) = [Insert k (Symbol a)]
+inputs' k (View {a} _)   = []
+inputs' k (Select ts)    = map (\l => Pick k l) (labels ts)
+inputs' k (Change {a} _) = [Insert k (Symbol a)]
+inputs' k (Watch {a} _)  = []
 
 public export
 inputs : (t : Task h a) -> IsNormal t => State h -> List (Input Symbolic)
-inputs (Edit (Named n) (Select ts)) @{EditIsNormal}         _ = map (\l => Pick (Named n) l) (labels ts) --> [ (n, Decide l) | l <- labels ts ]
-inputs (Edit (Named n) e)           @{EditIsNormal}         s = map (\d => Insert n d) (inputs' e) --> [ (n, Insert d) | d <- inputs' e ]
+inputs (Edit (Named k) e)           @{EditIsNormal}         s = inputs' k e
 inputs (Trans _ t2)                 @{TransIsNormal n2}     s = inputs t2 s
 inputs (Pair t1 t2)                 @{PairIsNormal n1 n2}   s = inputs t1 s ++ inputs t2 s
 inputs (Done _)                     @{DoneIsNormal}         _ = []
@@ -112,4 +110,4 @@ inputs (Choose t1 t2)               @{ChooseIsNormal n1 n2} s = inputs t1 s ++ i
 inputs (Fail)                       @{FailIsNormal}         _ = []
 inputs (Step t1 e2)                 @{StepIsNormal n1}      s = inputs t1 s ++ case value t1 s of
   Nothing => []
-  Just v1 => map fromOption (options (e2 v1)) --> [ fromOption o | o <- options (e2 v1) ]
+  Just v1 => options (e2 v1)

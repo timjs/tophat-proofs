@@ -119,37 +119,35 @@ DecEq Symbolic where
 public export
 data Input v
   = Insert Nat v
-  | Pick Name Label
+  | Option Name Label
 
-insertInjective : (Insert k v = Insert k x) -> (v = x)
-insertInjective Refl = Refl
+public export
+Pick : Nat -> Label -> Input v
+Pick n l = Option (Named n) l
 
-pickInjective : (Pick n l = Pick n x) -> (l = x)
-pickInjective Refl = Refl
+public export
+Prepick : Label -> Input v
+Prepick l = Option Unnamed l
+
+-- insertInjective : (Insert k v = Insert k x) -> (v = x)
+-- insertInjective Refl = Refl
+
+-- pickInjective : (Pick n l = Pick n x) -> (l = x)
+-- pickInjective Refl = Refl
 
 public export
 Eq v => Eq (Input v) where
   (==) (Insert k x) (Insert k' x') = k == k' && x == x'
-  (==) (Pick n l)   (Pick n' l')   = n == n' && l == l'
+  (==) (Option n l) (Option n' l') = n == n' && l == l'
   (==) _            _              = False
 
 public export
 DecEq v => DecEq (Input v) where
   decEq (Insert k x) (Insert k' x') = ?input_decEq_insert
-  decEq (Pick n l)   (Pick n' l')   = ?input_decEq_pick
+  decEq (Option n l) (Option n' l') = ?input_decEq_pick
   decEq _            _              = ?action_decEq_rest
 
 public export
 dummify : Input Concrete -> Input Symbolic
 dummify (Insert k (Value {a'} _)) = Insert k (Symbol a')
-dummify (Pick n l)                = Pick n l
-
----- Options
-
-public export
-Option : Type
-Option = (Name, Label)
-
-export
-fromOption : Option -> Input b
-fromOption (n, l) = Pick n l
+dummify (Option n l)              = Option n l

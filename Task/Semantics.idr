@@ -16,7 +16,7 @@ data NotApplicable
   | CouldNotChangeRef Type Type
   | CouldNotGoTo Label
   | CouldNotFind Label
-  | CouldNotSelect
+  | CouldNotPick
   | CouldNotContinue
   | CouldNotHandle (Input Concrete)
   | CouldNotHandleValue Concrete
@@ -110,16 +110,32 @@ handle' (Watch _) c _ = Left $ CouldNotHandleValue c
 handle' (Select _) c _ = Left $ CouldNotHandleValue c
 
 public export
+pick : Task h a -> Label -> Either NotApplicable (Task h a)
+pick t@(Edit n (Select ts)) l =
+  case lookup l ts of
+    Just t' => do
+      if Option n l `elem` options t
+        then Right t'
+        else Left $ CouldNotGoTo l
+    Nothing => Left $ CouldNotFind l
+pick (Trans e1 t2) l =
+  case pick t2 l of
+    Right t' => Right $ Trans e1 t'
+    Left e => Left e
+pick (Step t1 e2) l =
+  case pick t1 l of
+    Right t' => Right $ Step t' e2
+    Left e => Left e
+pick _ _ = Left $ CouldNotPick
+
+public export
 handle : (t : Task h a) -> IsNormal t => Input Concrete -> State h -> Either NotApplicable (Task h a, State h)
 ---- Selections
-handle t@(Edit n (Select ts)) (Pick n' l) s =
+handle t@(Edit n (Select ts)) (Option n' l) s =
   case n ?= n' of
-    Yes Refl => case lookup l ts of
-      Just t' => do
-        if (n, l) `elem` options t
-          then Right (t', s) -- H-Select
-          else Left $ CouldNotGoTo l
-      Nothing => Left $ CouldNotFind l
+    Yes Refl => case pick t l of
+      Right t' => Right (t', s) -- H-Select
+      Left e => Left e
     No _ => Left $ CouldNotMatch n n'
 handle (Edit n (Select ts)) i s =
   Left $ CouldNotHandle i
@@ -130,7 +146,7 @@ handle (Edit (Named k) e) (Insert k' c) s =
       Right (e', s') => Right (Edit (Named k) e', s') -- H-Edit
       Left e => Left e
     No _ => Left $ CouldNotMatch (Named k) (Named k')
-handle (Edit (Named k) e) i@(Pick n' l) s =
+handle (Edit (Named k) e) i@(Option n' l) s =
   Left $ CouldNotHandle i
 handle (Edit Unnamed e) i s =
   Left $ CouldNotHandle i
@@ -139,9 +155,11 @@ handle (Trans e1 t2) @{TransIsNormal n2} i s =
   case handle t2 i s of
     Right (t2', s') => Right (Trans e1 t2', s') -- H-Trans
     Left e => Left e
-handle (Step t1 e2) @{StepIsNormal n1} (Pick Unnamed l) s =
+handle (Step t1 e2) @{StepIsNormal n1} (Option Unnamed l) s =
   case value t1 s of
-    Just v1 => handle (e2 v1) @{?shouldWeNormaliseHere} (Pick Unnamed l) s -- H-Preselect
+    Just v1 => case pick (e2 v1) l of
+      Right t' => Right (t', s) -- H-Preselect
+      Left e => Left e
     Nothing => Left $ CouldNotContinue
 handle (Step t1 e2) @{StepIsNormal n1} i s =
   case handle t1 i s of
