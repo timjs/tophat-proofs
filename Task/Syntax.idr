@@ -74,6 +74,16 @@ mutual
     Change : {a : Type} -> {auto ok : IsBasic a} -> (r : Ref h a) -> Editor h a
     Watch  : {a : Type} -> {auto ok : IsBasic a} -> (r : Ref h a) -> Editor h a
 
+public export
+data IsNormal : Task h a -> Type where
+  EditIsNormal   : IsNormal (Edit (Named k) e)
+  PairIsNormal   : IsNormal t1 -> IsNormal t2 -> IsNormal (Pair t1 t2)
+  DoneIsNormal   : IsNormal (Done v)
+  ChooseIsNormal : IsNormal t1 -> IsNormal t2 -> IsNormal (Choose t1 t2)
+  FailIsNormal   : IsNormal Fail
+  TransIsNormal  : IsNormal t2 -> IsNormal (Trans f t2)
+  StepIsNormal   : IsNormal t1 -> IsNormal (Step t1 c)
+
 ---- Inputs & Options ----------------------------------------------------------
 
 ---- Concrete inputs
@@ -94,76 +104,52 @@ Eq Symbolic where
     (==) (Symbol a {ok'=ok_a}) (Symbol a {ok'=ok_a}) | Yes Refl = True
     (==) (Symbol a {ok'=ok_a}) (Symbol b {ok'=ok_b}) | No _ = False
 
-symbolicInjective : {auto ok_a : IsBasic a} -> {auto ok_b : IsBasic b} -> (Symbol a = Symbol b) -> (ok_a = ok_b)
-symbolicInjective {ok_a=ok} {ok_b=ok} Refl = Refl
+symbolInjective : {auto ok_a : IsBasic a} -> {auto ok_b : IsBasic b} -> (Symbol a = Symbol b) -> (ok_a = ok_b)
+symbolInjective {ok_a=ok} {ok_b=ok} Refl = Refl
 
 public export
 DecEq Symbolic where
   decEq (Symbol a {ok'=ok_a}) (Symbol b {ok'=ok_b}) with (decBasic ok_a ok_b)
     decEq (Symbol a {ok'=ok_a}) (Symbol a {ok'=ok_a}) | Yes Refl = Yes Refl
-    decEq (Symbol a {ok'=ok_a}) (Symbol b {ok'=ok_b}) | No cntr = No (cntr . symbolicInjective)
+    decEq (Symbol a {ok'=ok_a}) (Symbol b {ok'=ok_b}) | No cntr = No (cntr . symbolInjective)
 
----- Input actions
+---- Inputs
+
+||| Inputs are parametrised over concrete values or symbols
+public export
+data Input k
+  = Insert Nat k
+  | Pick Name Label
+
+insertInjective : (Insert n k = Insert n x) -> (k = x)
+insertInjective Refl = Refl
+
+pickInjective : (Pick n l = Pick n x) -> (l = x)
+pickInjective Refl = Refl
 
 public export
-data Action k
-  = Insert k
-  | Decide Label
-
-enterInjective : (Insert k = Insert x) -> (k = x)
-enterInjective Refl = Refl
-
-selectInjective : (Decide l = Decide x) -> (l = x)
-selectInjective Refl = Refl
+Eq k => Eq (Input k) where
+  (==) (Insert n x) (Insert n' x') = n == n' && x == x'
+  (==) (Pick n l)   (Pick n' l')   = n == n' && l == l'
+  (==) _            _              = False
 
 public export
-Eq k => Eq (Action k) where
-  (==) (Insert x)  (Insert x')  = x == x'
-  (==) (Decide l) (Decide l') = l == l'
-  (==) _           _            = False
-
-public export
-DecEq k => DecEq (Action k) where
-  decEq (Insert x)  (Insert x')  with (x ?= x')
-    decEq (Insert x)  (Insert x)  | Yes Refl = Yes Refl
-    decEq (Insert x)  (Insert x') | No cntr = No (cntr . enterInjective)
-  decEq (Decide l) (Decide l') with (l ?= l')
-    decEq (Decide l) (Decide l)  | Yes Refl = Yes Refl
-    decEq (Decide l) (Decide l') | No cntr = No (cntr . selectInjective)
-  decEq _           _            = ?action_decEq_rest
-
----- Full inputs
-
-public export
-Input : Type -> Type
-Input k = (Name, Action k)
--- data Input k
---   = AInput Name (Action k)
+DecEq k => DecEq (Input k) where
+  decEq (Insert n x) (Insert n' x') = ?input_decEq_insert
+  decEq (Pick n l)   (Pick n' l')   = ?input_decEq_pick
+  decEq _            _              = ?action_decEq_rest
 
 public export
 dummify : Input Concrete -> Input Symbolic
-dummify (n, Insert (Value {a'} _)) = (n, Insert (Symbol a'))
-dummify (n, Decide l)                 = (n, Decide l)
-
--- public export
--- Eq k => Eq (Input k) where
---   (==) (AInput n a)  (AInput n' a')  = n == n' && a == a'
---   (==) _             _               = False
-
--- public export
--- DecEq k => DecEq (Input k) where
---   decEq (AInput n a) (AInput n' a') with (n ?= n', a ?= a')
---     decEq (AInput n a) (AInput n' a') | with_pat = ?input_decEq_rest
+dummify (Insert n (Value {a'} _)) = Insert n (Symbol a')
+dummify (Pick n l)                = Pick n l
 
 ---- Options
 
 public export
 Option : Type
 Option = (Name, Label)
--- data Option
---   = AOption Name Label
-
 
 export
 fromOption : Option -> Input b
-fromOption (n, l) = (n, Decide l)
+fromOption (n, l) = Pick n l
