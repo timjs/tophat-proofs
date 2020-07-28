@@ -33,12 +33,12 @@ fresh : (Stream Nat, State h) -> (Nat, (Stream Nat, State h))
 fresh (n :: ns, s) = (n, (ns, s))
 
 public export
-normalise : Task h a -> (Stream Nat, State h) -> (Task h a, (Stream Nat, State h))
+normalise : Task h a -> (Stream Nat, State h) -> ((t : Task h a ** IsNormal t), (Stream Nat, State h))
 ---- Step
 normalise (Step t1 e2) s =
-  let (t1', s') = normalise t1 s
-      stay = Step t1' e2
-   in case value t1' (snd s') of
+  let ((t1' ** n1'), s') = normalise t1 s
+      stay = (Step t1' e2 ** StepIsNormal n1')
+   in case value t1' (get s') of
     Nothing => (stay, s') -- N-StepNone
     Just v1 =>
       let t2 = e2 v1
@@ -50,67 +50,65 @@ normalise (Step t1 e2) s =
           else normalise (e2 v1) s' -- N-StepCont
 ---- Choose
 normalise (Choose t1 t2) s =
-  let (t1', s') = normalise t1 s
+  let ((t1' ** n1'), s') = normalise t1 s
    in case value t1' (get s') of
-    Just _ => (t1', s') -- N-ChooseLeft
+    Just _ => ((t1' ** n1'), s') -- N-ChooseLeft
     Nothing =>
-      let (t2', s'') = normalise t2 s'
+      let ((t2' ** n2'), s'') = normalise t2 s'
        in case value t2' (get s'') of
-        Just _ => (t2', s'') -- N-ChooseRight
-        Nothing => (Choose t1' t2', s'') -- N-ChooseNone
+        Just _ => ((t2' ** n2'), s'') -- N-ChooseRight
+        Nothing => ((Choose t1' t2' ** ChooseIsNormal n1' n2'), s'') -- N-ChooseNone
 ---- Congruences
 normalise (Trans f t2) s =
-  let (t2', s') = normalise t2 s
-   in (Trans f t2', s')
+  let ((t2' ** n2'), s') = normalise t2 s
+   in ((Trans f t2' ** TransIsNormal n2'), s')
 normalise (Pair t1 t2) s =
-  let (t1', s')  = normalise t1 s
-      (t2', s'') = normalise t2 s'
-   in (Pair t1' t2', s'')
+  let ((t1' ** n1'), s')  = normalise t1 s
+      ((t2' ** n2'), s'') = normalise t2 s'
+   in ((Pair t1' t2' ** PairIsNormal n1' n2'), s'')
 ---- Ready
-normalise t@(Done _) s = (t, s)
-normalise t@(Fail) s = (t, s)
+normalise (Done x) s = ((Done x ** DoneIsNormal), s)
+normalise (Fail) s = ((Fail ** FailIsNormal), s)
 ---- Editors
-normalise t@(Edit Unnamed e) s =
+normalise (Edit Unnamed e) s =
   let (n, s') = fresh s
-   in (Edit (Named n) e, s')
-normalise t@(Edit (Named _) _) s = (t, s)
+   in ((Edit (Named n) e ** EditIsNormal), s')
+normalise (Edit (Named n) e) s = ((Edit (Named n) e ** EditIsNormal), s)
 ---- Rewrites
-normalise (Assert p) s = (Done p, s)
+normalise (Assert p) s = ((Done p ** DoneIsNormal), s)
 normalise (Repeat t1) s =
-  let (t1', s') = normalise t1 s
-   in (Step t1' (\x => Edit Unnamed (Select ["Repeat" ~> Repeat t1, "Exit" ~> Done x])), s')
+  let ((t1' ** n1'), s') = normalise t1 s
+   in ((Step t1' (\x => Edit Unnamed (Select ["Repeat" ~> Repeat t1, "Exit" ~> Done x])) ** StepIsNormal n1'), s')
   -- normalise (Step t1 (\x => Edit Unnamed (Select ["Repeat" ~> Repeat t1, "Exit" ~> Done x]))) s <-- Should be equivallent
 -- normalise (Share b) = do
 --   l <- Store.alloc b --XXX: raise?
 --   pure $ Done l
 normalise (Assign b l) s =
   let s' = modify (write b l) s
-   in (Done (), s')
+   in ((Done () ** DoneIsNormal), s')
   -- tell [pack r]
 
 ---- Handling ------------------------------------------------------------------
 
 public export
-handle' : Editor h a -> State h -> Concrete -> Either NotApplicable (Editor h a, State h)
-handle' (Enter {a} {ok}) s (Value {a'} {ok'} v') with (decBasic ok ok')
-  handle' (Enter {a} {ok}) s (Value {a'=a } {ok'=ok } v') | Yes Refl = Right (Update v', s)
-  handle' (Enter {a} {ok}) s (Value {a'=a'} {ok'=ok'} v') | No _ = Left $ CouldNotChangeVal a' a
-handle' (Update {a} {ok} v) s (Value {a'} {ok'} v') with (decBasic ok ok')
-  handle' (Update {a} {ok} v) s (Value {a'=a } {ok'=ok } v') | Yes Refl = Right (Update v', s)
-  handle' (Update {a} {ok} v) s (Value {a'=a'} {ok'=ok'} v') | No _ = Left $ CouldNotChangeVal a' a
-handle' (Change {a} {ok} v) s (Value {a'} {ok'} v') with (decBasic ok ok')
-  handle' (Change {a} {ok} l) s (Value {a'=a } {ok'=ok } v') | Yes Refl = Right (Change l, write v' l s)
-  handle' (Change {a} {ok} l) s (Value {a'=a'} {ok'=ok'} v') | No _ = Left $ CouldNotChangeRef a' a
-handle' (View _) _ c = Left $ CouldNotHandleValue c
-handle' (Watch _) _ c = Left $ CouldNotHandleValue c
-handle' (Select _) _ c = Left $ CouldNotHandleValue c
-
-rethrow : Either e (a, s) -> (Either e a, s)
+handle' : Editor h a -> Concrete -> State h -> Either NotApplicable (Editor h a, State h)
+handle' (Enter {a} {ok}) (Value {a'} {ok'} v') s with (decBasic ok ok')
+  handle' (Enter {a} {ok}) (Value {a'=a } {ok'=ok } v') s | Yes Refl = Right (Update v', s)
+  handle' (Enter {a} {ok}) (Value {a'=a'} {ok'=ok'} v') s | No _ = Left $ CouldNotChangeVal a' a
+handle' (Update {a} {ok} v) (Value {a'} {ok'} v') s with (decBasic ok ok')
+  handle' (Update {a} {ok} v) (Value {a'=a } {ok'=ok } v') s | Yes Refl = Right (Update v', s)
+  handle' (Update {a} {ok} v) (Value {a'=a'} {ok'=ok'} v') s | No _ = Left $ CouldNotChangeVal a' a
+handle' (Change {a} {ok} v) (Value {a'} {ok'} v') s with (decBasic ok ok')
+  handle' (Change {a} {ok} l) (Value {a'=a } {ok'=ok } v') s | Yes Refl = Right (Change l, write v' l s)
+  handle' (Change {a} {ok} l) (Value {a'=a'} {ok'=ok'} v') s | No _ = Left $ CouldNotChangeRef a' a
+handle' (View _) c _ = Left $ CouldNotHandleValue c
+handle' (Watch _) c _ = Left $ CouldNotHandleValue c
+handle' (Select _) c _ = Left $ CouldNotHandleValue c
 
 public export
-handle : Task h a -> State h -> Input Concrete -> Either NotApplicable (Task h a, State h)
----- Editors
-handle t@(Edit n (Select ts)) s (n', Decide l) =
+handle : (t : Task h a) -> IsNormal t => Input Concrete -> State h -> Either NotApplicable (Task h a, State h)
+---- Selections
+handle t@(Edit n (Select ts)) (Pick n' l) s =
   case n ?= n' of
     Yes Refl => case lookup l ts of
       Just t' => do
@@ -119,48 +117,47 @@ handle t@(Edit n (Select ts)) s (n', Decide l) =
           else Left $ CouldNotGoTo l
       Nothing => Left $ CouldNotFind l
     No _ => Left $ CouldNotMatch n n'
---FIXME: Why is this case needed for proofs? It is covered by the last case below...
-handle t@(Edit n (Select ts)) s i@(n', Insert c) =
+handle (Edit n (Select ts)) i s =
   Left $ CouldNotHandle i
---FIXME: Does this allow sending Enter actions to unnamed editors??
-handle (Edit n e) s (n', Insert c) =
+---- Editors
+handle (Edit (Named n) e) (Insert n' c) s =
   case n ?= n' of
-    Yes Refl => case handle' e s c of
-      Right (e', s') => Right (Edit n e', s')
+    Yes Refl => case handle' e c s of
+      Right (e', s') => Right (Edit (Named n) e', s')
       Left e => Left e
-    No _ => Left $ CouldNotMatch n n
-handle (Edit n e) s i@(n', Decide l) =
-  Left $ CouldNotHandle  i
+    No _ => Left $ CouldNotMatch (Named n) (Named n')
+handle (Edit (Named n) e) i@(Pick n' l) s =
+  Left $ CouldNotHandle i
+handle (Edit Unnamed e) i s =
+  Left $ CouldNotHandle i
 ---- Pass
-handle (Trans e1 t2) s i =
-  case handle t2 s i of
+handle (Trans e1 t2) @{TransIsNormal n2} i s =
+  case handle t2 i s of
     Right (t2', s') => Right (Trans e1 t2', s')
     Left e => Left e
-handle (Step t1 e2) s i =
-  case handle t1 s i of
+handle (Step t1 e2) @{StepIsNormal n1} (Pick Unnamed l) s =
+  case value t1 s of
+    Just v1 => handle (e2 v1) @{?shouldWeNormaliseHere} (Pick Unnamed l) s
+    Nothing => Left $ CouldNotContinue
+handle (Step t1 e2) @{StepIsNormal n1} i s =
+  case handle t1 i s of
     Right (t1', s') => Right (Step t1' e2, s') -- H-Step
-    Left _ => do
-      case value t1 s of
-        Just v1 => handle (e2 v1) s i -- H-StepCont
-        Nothing => Left $ CouldNotContinue
-handle (Pair t1 t2) s i =
-  case handle t1 s i of
+    Left _ => Left $ CouldNotHandle i
+handle (Pair t1 t2) @{PairIsNormal n1 n2} i s =
+  case handle t1 i s of
     Right (t1', s') => Right (Pair t1' t2, s') -- H-PairFirst
-    Left _ => case handle t2 s i of
+    Left _ => case handle t2 i s of
       Right (t2', s') => Right (Pair t1 t2', s') -- H-PairSecond
       Left e => Left e
-handle (Choose t1 t2) s i =
-  case handle t1 s i of
+handle (Choose t1 t2) @{ChooseIsNormal n1 n2} i s =
+  case handle t1 i s of
     Right (t1', s') => Right (Choose t1' t2, s') -- H-ChooseFirst
-    Left _ => case handle t2 s i of
+    Left _ => case handle t2 i s of
       Right (t2', s') => Right (Choose t1 t2', s')
       Left e => Left e -- H-ChoosSecond
 ---- Rest
-handle (Done _) s i = Left $ CouldNotHandle i
-handle (Fail) s i = Left $ CouldNotHandle i
-handle (Assert _) s i = Left $ CouldNotHandle i
-handle (Repeat _) s i = Left $ CouldNotHandle i
-handle (Assign _ _) s i = Left $ CouldNotHandle i
+handle (Done _) i s = Left $ CouldNotHandle i
+handle (Fail) i s = Left $ CouldNotHandle i
 
 
 {-

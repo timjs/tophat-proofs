@@ -18,18 +18,14 @@ value' (Change l) s = Just (read l s)
 value' (Watch l)  s = Just (read l s)
 
 public export
-value : Task h a -> State h -> Maybe a
-value (Edit n e)         s = value' e s
-value (Trans f t)        s = map f (value t s)
-value (Pair t1 t2)       s = value t1 s <&> value t2 s
-value (Done v)           _ = Just v
-value (Choose t1 t2)     s = value t1 s <|> value t2 s
-value (Fail)             _ = Nothing
-value (Step _ _)         _ = Nothing
-value (Assert b)         _ = Just b
-value (Repeat t1)        s = Nothing --< Doesn't have a value because should be normalised
--- value (Share b)          _ = (Just Loc)
-value (Assign _ _)       _ = Just ()
+value : (t : Task h a) -> IsNormal t => State h -> Maybe a
+value (Edit (Named _) e) @{EditIsNormal}         s = value' e s
+value (Trans f t1)       @{TransIsNormal n1}     s = map f (value t1 s)
+value (Pair t1 t2)       @{PairIsNormal n1 n2}   s = value t1 s <&> value t2 s
+value (Done v)           @{DoneIsNormal}         _ = Just v
+value (Choose t1 t2)     @{ChooseIsNormal n1 n2} s = value t1 s <|> value t2 s
+value (Fail)             @{FailIsNormal}         _ = Nothing
+value (Step _ _)         @{StepIsNormal n2}      _ = Nothing
 
 ---- Failing -------------------------------------------------------------------
 
@@ -101,23 +97,19 @@ inputs' : Editor h a -> List Symbolic
 inputs' (Enter {a})    = [Symbol a]
 inputs' (Update {a} _) = [Symbol a]
 inputs' (View {a} _)   = []
-inputs' (Select _)     = [] --> selections do not have `IEnter` actions and are handles separately
+inputs' (Select _)     = [] --> selections do not have `Insert` inputs and are handles separately
 inputs' (Change {a} _) = [Symbol a]
 inputs' (Watch {a} _)  = []
 
 public export
-inputs : Task h a -> State h -> List (Input Symbolic)
-inputs (Edit n (Select ts))  _ = map (\l => (n, Decide l)) (labels ts) --> [ (n, Decide l) | l <- labels ts ]
-inputs (Edit n e)            s = map (\d => (n, Insert d)) (inputs' e) --> [ (n, Insert d) | d <- inputs' e ]
-inputs (Trans _ t2)          s = inputs t2 s
-inputs (Pair t1 t2)          s = inputs t1 s ++ inputs t2 s
-inputs (Done _)              _ = []
-inputs (Choose t1 t2)        s = inputs t1 s ++ inputs t2 s
-inputs (Fail)                _ = []
-inputs (Step t1 e2)          s = inputs t1 s ++ case value t1 s of
-                                   Nothing => []
-                                   Just v1 => map fromOption (options (e2 v1)) --> [ fromOption o | o <- options (e2 v1) ]
-inputs (Assert _)            _ = []
-inputs (Repeat t1)           s = inputs t1 s
--- inputs (Share _)            _ = []
-inputs (Assign _ _)          _ = []
+inputs : (t : Task h a) -> IsNormal t => State h -> List (Input Symbolic)
+inputs (Edit (Named n) (Select ts)) @{EditIsNormal}         _ = map (\l => Pick (Named n) l) (labels ts) --> [ (n, Decide l) | l <- labels ts ]
+inputs (Edit (Named n) e)           @{EditIsNormal}         s = map (\d => Insert n d) (inputs' e) --> [ (n, Insert d) | d <- inputs' e ]
+inputs (Trans _ t2)                 @{TransIsNormal n2}     s = inputs t2 s
+inputs (Pair t1 t2)                 @{PairIsNormal n1 n2}   s = inputs t1 s ++ inputs t2 s
+inputs (Done _)                     @{DoneIsNormal}         _ = []
+inputs (Choose t1 t2)               @{ChooseIsNormal n1 n2} s = inputs t1 s ++ inputs t2 s
+inputs (Fail)                       @{FailIsNormal}         _ = []
+inputs (Step t1 e2)                 @{StepIsNormal n1}      s = inputs t1 s ++ case value t1 s of
+  Nothing => []
+  Just v1 => map fromOption (options (e2 v1)) --> [ fromOption o | o <- options (e2 v1) ]
