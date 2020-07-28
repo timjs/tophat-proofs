@@ -135,8 +135,13 @@ isItNothing (Just _)  = No absurd
 
 export
 notJustIsNothing : {m : Maybe a} -> Not (IsJust m) -> IsNothing m
-notJustIsNothing {m = Nothing}  _ = Refl
-notJustIsNothing {m = (Just _)} f = void (f ItIsJust)
+notJustIsNothing {m = Nothing} _ = Refl
+notJustIsNothing {m = Just _}  f = void (f ItIsJust)
+
+export
+notNothingIsJust : {m : Maybe a} -> Not (IsNothing m) -> IsJust m
+notNothingIsJust {m = Nothing} f = void (f Refl)
+notNothingIsJust {m = Just _}  f = ItIsJust
 
 ---- IsItRight or IsItLeft -----------------------------------------------------
 

@@ -20,25 +20,25 @@ data Name
 export
 Eq Name where
   (==) (Unnamed) (Unnamed)  = True
-  (==) (Named i) (Named i') = i == i'
+  (==) (Named k) (Named k') = k == k'
   (==) _         _          = False
 
 export
-Uninhabited (Unnamed = Named i) where
+Uninhabited (Unnamed = Named k) where
   uninhabited Refl impossible
 
 export
-namedInjective : (Named i = Named j) -> (i = j)
+namedInjective : (Named x = Named k) -> (x = k)
 namedInjective Refl = Refl
 
 public export
 DecEq Name where
   decEq (Unnamed) (Unnamed)  = Yes Refl
-  decEq (Named i) (Named i') with (i ?= i')
-    decEq (Named i) (Named i)  | Yes Refl = Yes Refl
-    decEq (Named i) (Named i') | No contra = No (contra . namedInjective)
-  decEq (Unnamed) (Named i)  = No absurd
-  decEq (Named i) (Unnamed)  = No (negEqSym absurd)
+  decEq (Named k) (Named k') with (k ?= k')
+    decEq (Named k) (Named k)  | Yes Refl = Yes Refl
+    decEq (Named k) (Named k') | No contra = No (contra . namedInjective)
+  decEq (Unnamed) (Named k)  = No absurd
+  decEq (Named k) (Unnamed)  = No (negEqSym absurd)
 
 ---- Tasks & Editors -----------------------------------------------------------
 
@@ -117,31 +117,31 @@ DecEq Symbolic where
 
 ||| Inputs are parametrised over concrete values or symbols
 public export
-data Input k
-  = Insert Nat k
+data Input v
+  = Insert Nat v
   | Pick Name Label
 
-insertInjective : (Insert n k = Insert n x) -> (k = x)
+insertInjective : (Insert k v = Insert k x) -> (v = x)
 insertInjective Refl = Refl
 
 pickInjective : (Pick n l = Pick n x) -> (l = x)
 pickInjective Refl = Refl
 
 public export
-Eq k => Eq (Input k) where
-  (==) (Insert n x) (Insert n' x') = n == n' && x == x'
+Eq v => Eq (Input v) where
+  (==) (Insert k x) (Insert k' x') = k == k' && x == x'
   (==) (Pick n l)   (Pick n' l')   = n == n' && l == l'
   (==) _            _              = False
 
 public export
-DecEq k => DecEq (Input k) where
-  decEq (Insert n x) (Insert n' x') = ?input_decEq_insert
+DecEq v => DecEq (Input v) where
+  decEq (Insert k x) (Insert k' x') = ?input_decEq_insert
   decEq (Pick n l)   (Pick n' l')   = ?input_decEq_pick
   decEq _            _              = ?action_decEq_rest
 
 public export
 dummify : Input Concrete -> Input Symbolic
-dummify (Insert n (Value {a'} _)) = Insert n (Symbol a')
+dummify (Insert k (Value {a'} _)) = Insert k (Symbol a')
 dummify (Pick n l)                = Pick n l
 
 ---- Options

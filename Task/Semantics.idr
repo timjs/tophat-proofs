@@ -67,15 +67,19 @@ normalise (Pair t1 t2) s =
       ((t2' ** n2'), s'') = normalise t2 s'
    in ((Pair t1' t2' ** PairIsNormal n1' n2'), s'')
 ---- Ready
-normalise (Done x) s = ((Done x ** DoneIsNormal), s)
-normalise (Fail) s = ((Fail ** FailIsNormal), s)
+normalise (Done x) s =
+  ((Done x ** DoneIsNormal), s)
+normalise (Fail) s =
+  ((Fail ** FailIsNormal), s)
 ---- Editors
 normalise (Edit Unnamed e) s =
-  let (n, s') = fresh s
-   in ((Edit (Named n) e ** EditIsNormal), s')
-normalise (Edit (Named n) e) s = ((Edit (Named n) e ** EditIsNormal), s)
+  let (k, s') = fresh s
+   in ((Edit (Named k) e ** EditIsNormal), s')
+normalise (Edit (Named k) e) s
+  = ((Edit (Named k) e ** EditIsNormal), s)
 ---- Rewrites
-normalise (Assert p) s = ((Done p ** DoneIsNormal), s)
+normalise (Assert p) s =
+  ((Done p ** DoneIsNormal), s)
 normalise (Repeat t1) s =
   let ((t1' ** n1'), s') = normalise t1 s
    in ((Step t1' (\x => Edit Unnamed (Select ["Repeat" ~> Repeat t1, "Exit" ~> Done x])) ** StepIsNormal n1'), s')
@@ -113,31 +117,31 @@ handle t@(Edit n (Select ts)) (Pick n' l) s =
     Yes Refl => case lookup l ts of
       Just t' => do
         if (n, l) `elem` options t
-          then Right (t', s)
+          then Right (t', s) -- H-Select
           else Left $ CouldNotGoTo l
       Nothing => Left $ CouldNotFind l
     No _ => Left $ CouldNotMatch n n'
 handle (Edit n (Select ts)) i s =
   Left $ CouldNotHandle i
 ---- Editors
-handle (Edit (Named n) e) (Insert n' c) s =
-  case n ?= n' of
+handle (Edit (Named k) e) (Insert k' c) s =
+  case k ?= k' of
     Yes Refl => case handle' e c s of
-      Right (e', s') => Right (Edit (Named n) e', s')
+      Right (e', s') => Right (Edit (Named k) e', s') -- H-Edit
       Left e => Left e
-    No _ => Left $ CouldNotMatch (Named n) (Named n')
-handle (Edit (Named n) e) i@(Pick n' l) s =
+    No _ => Left $ CouldNotMatch (Named k) (Named k')
+handle (Edit (Named k) e) i@(Pick n' l) s =
   Left $ CouldNotHandle i
 handle (Edit Unnamed e) i s =
   Left $ CouldNotHandle i
 ---- Pass
 handle (Trans e1 t2) @{TransIsNormal n2} i s =
   case handle t2 i s of
-    Right (t2', s') => Right (Trans e1 t2', s')
+    Right (t2', s') => Right (Trans e1 t2', s') -- H-Trans
     Left e => Left e
 handle (Step t1 e2) @{StepIsNormal n1} (Pick Unnamed l) s =
   case value t1 s of
-    Just v1 => handle (e2 v1) @{?shouldWeNormaliseHere} (Pick Unnamed l) s
+    Just v1 => handle (e2 v1) @{?shouldWeNormaliseHere} (Pick Unnamed l) s -- H-Preselect
     Nothing => Left $ CouldNotContinue
 handle (Step t1 e2) @{StepIsNormal n1} i s =
   case handle t1 i s of
@@ -156,8 +160,8 @@ handle (Choose t1 t2) @{ChooseIsNormal n1 n2} i s =
       Right (t2', s') => Right (Choose t1 t2', s')
       Left e => Left e -- H-ChoosSecond
 ---- Rest
-handle (Done _) i s = Left $ CouldNotHandle i
-handle (Fail) i s = Left $ CouldNotHandle i
+handle (Done _) i _ = Left $ CouldNotHandle i
+handle (Fail) i _ = Left $ CouldNotHandle i
 
 
 {-
