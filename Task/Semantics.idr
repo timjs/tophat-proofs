@@ -155,16 +155,16 @@ handle (Trans e1 t2) @{TransIsNormal n2} i s =
   case handle t2 i s of
     Right (t2', s') => Right (Trans e1 t2', s') -- H-Trans
     Left e => Left e
-handle (Step t1 e2) @{StepIsNormal n1} (Option Unnamed l) s =
-  case value t1 s of
-    Just v1 => case pick (e2 v1) l of
-      Right t' => Right (t', s) -- H-Preselect
-      Left e => Left e
-    Nothing => Left $ CouldNotContinue
 handle (Step t1 e2) @{StepIsNormal n1} i s =
   case handle t1 i s of
     Right (t1', s') => Right (Step t1' e2, s') -- H-Step
-    Left _ => Left $ CouldNotHandle i
+    Left _ => case i of
+      Option Unnamed l => case value t1 s of
+        Just v1 => case pick (e2 v1) l of
+          Right t' => Right (t', s) -- H-Preselect
+          Left e => Left e
+        Nothing => Left $ CouldNotContinue
+      _ => Left $ CouldNotPick
 handle (Pair t1 t2) @{PairIsNormal n1 n2} i s =
   case handle t1 i s of
     Right (t1', s') => Right (Pair t1' t2, s') -- H-PairFirst
