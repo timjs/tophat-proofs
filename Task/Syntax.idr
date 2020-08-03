@@ -84,6 +84,10 @@ data IsNormal : Task h a -> Type where
   TransIsNormal  : IsNormal t2 -> IsNormal (Trans f t2)
   StepIsNormal   : IsNormal t1 -> IsNormal (Step t1 c)
 
+public export
+NormalisedTask : Heap -> Type -> Type
+NormalisedTask h a = (t : Task h a ** IsNormal t)
+
 ---- Inputs & Options ----------------------------------------------------------
 
 ---- Concrete inputs

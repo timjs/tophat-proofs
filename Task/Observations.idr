@@ -63,18 +63,14 @@ watching' (Select _)     = []
 watching' (Change {a} l) = [(a ** l)]
 watching' (Watch {a} l)  = [(a ** l)]
 
-watching : Task h a -> List (t : Type ** Ref h t)
-watching (Edit _ e)     = watching' e
-watching (Trans _ t2)   = watching t2
-watching (Pair t1 t2)   = watching t1 ++ watching t2
-watching (Done _)       = []
-watching (Choose t1 t2) = watching t1 ++ watching t2
-watching (Fail)         = []
-watching (Step t1 _)    = watching t1
-watching (Assert _)     = []
-watching (Repeat t1)    = watching t1
--- watching (Share _)      = []
-watching (Assign _ _)   = []
+watching : (t : Task h a) -> IsNormal t => List (t : Type ** Ref h t)
+watching (Edit _ e)     @{EditIsNormal}         = watching' e
+watching (Trans _ t2)   @{TransIsNormal n2}     = watching t2
+watching (Pair t1 t2)   @{PairIsNormal n1 n2}   = watching t1 ++ watching t2
+watching (Done _)       @{DoneIsNormal}         = []
+watching (Choose t1 t2) @{ChooseIsNormal n1 n2} = watching t1 ++ watching t2
+watching (Fail)         @{FailIsNormal}         = []
+watching (Step t1 _)    @{StepIsNormal n1}      = watching t1
 
 ---- Options -------------------------------------------------------------------
 

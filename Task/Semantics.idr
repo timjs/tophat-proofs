@@ -33,7 +33,7 @@ fresh : (Stream Nat, State h) -> (Nat, (Stream Nat, State h))
 fresh (n :: ns, s) = (n, (ns, s))
 
 public export
-normalise : Task h a -> (Stream Nat, State h) -> ((t : Task h a ** IsNormal t), (Stream Nat, State h))
+normalise : Task h a -> (Stream Nat, State h) -> (NormalisedTask h a, (Stream Nat, State h))
 ---- Step
 normalise (Step t1 e2) s =
   let ((t1' ** n1'), s') = normalise t1 s
