@@ -92,6 +92,12 @@ public export
 (~>) : a -> b -> (a, b)
 (~>) x y = (x, y)
 
+---- Existentials --------------------------------------------------------------
+
+public export
+Some : (Type -> Type) -> Type
+Some f = (a : Type ** f a)
+
 ---- IsItTrue or IsItFalse -----------------------------------------------------
 
 public export

@@ -1,7 +1,6 @@
 module Task.Observations
 
-import public Control.Monoidal
-import Data.List
+import Helpers
 import Task.Syntax
 
 %default total
@@ -55,7 +54,7 @@ mutual
 
 ---- Watching ------------------------------------------------------------------
 
-watching' : Editor h a -> List (t : Type ** Ref h t)
+watching' : Editor h a -> List (Some (Ref h))
 watching' (Enter)        = []
 watching' (Update _)     = []
 watching' (View _)       = []
@@ -63,7 +62,7 @@ watching' (Select _)     = []
 watching' (Change {a} l) = [(a ** l)]
 watching' (Watch {a} l)  = [(a ** l)]
 
-watching : (t : Task h a) -> IsNormal t => List (t : Type ** Ref h t)
+watching : (t : Task h a) -> IsNormal t => List (Some (Ref h))
 watching (Edit _ e)     @{EditIsNormal}         = watching' e
 watching (Trans _ t2)   @{TransIsNormal n2}     = watching t2
 watching (Pair t1 t2)   @{PairIsNormal n1 n2}   = watching t1 ++ watching t2
