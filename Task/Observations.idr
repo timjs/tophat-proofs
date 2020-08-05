@@ -97,12 +97,13 @@ inputs' k (Watch {a} _)  = []
 
 public export
 inputs : (t : Task h a) -> IsNormal t => State h -> List (Input Symbolic)
-inputs (Edit (Named k) e)           @{EditIsNormal}         s = inputs' k e
-inputs (Trans _ t2)                 @{TransIsNormal n2}     s = inputs t2 s
-inputs (Pair t1 t2)                 @{PairIsNormal n1 n2}   s = inputs t1 s ++ inputs t2 s
-inputs (Done _)                     @{DoneIsNormal}         _ = []
-inputs (Choose t1 t2)               @{ChooseIsNormal n1 n2} s = inputs t1 s ++ inputs t2 s
-inputs (Fail)                       @{FailIsNormal}         _ = []
-inputs (Step t1 e2)                 @{StepIsNormal n1}      s = inputs t1 s ++ case value t1 s of
-  Nothing => []
-  Just v1 => options (e2 v1)
+inputs (Edit (Named k) e) @{EditIsNormal}         s = inputs' k e
+inputs (Trans _ t2)       @{TransIsNormal n2}     s = inputs t2 s
+inputs (Pair t1 t2)       @{PairIsNormal n1 n2}   s = inputs t1 s ++ inputs t2 s
+inputs (Done _)           @{DoneIsNormal}         _ = []
+inputs (Choose t1 t2)     @{ChooseIsNormal n1 n2} s = inputs t1 s ++ inputs t2 s
+inputs (Fail)             @{FailIsNormal}         _ = []
+inputs (Step t1 e2)       @{StepIsNormal n1}      s = inputs t1 s ++
+  case value t1 s of
+    Nothing => []
+    Just v1 => options (e2 v1)
