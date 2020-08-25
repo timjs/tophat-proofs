@@ -50,29 +50,29 @@ iff (p_a, p_b) = (p_b, p_a)
 ---- Habited or Unhabited ------------------------------------------------------
 --FIXME: here because not yet in Data.Bool and Data.Maybe in 0.2.0...
 
-public export
-Uninhabited (True = False) where
-  uninhabited Refl impossible
+-- public export
+-- Uninhabited (True = False) where
+--   uninhabited Refl impossible
 
-public export
-Uninhabited (False = True) where
-  uninhabited Refl impossible
+-- public export
+-- Uninhabited (False = True) where
+--   uninhabited Refl impossible
 
-public export
-Uninhabited (Just x = Nothing) where
-  uninhabited Refl impossible
+-- public export
+-- Uninhabited (Just x = Nothing) where
+--   uninhabited Refl impossible
 
-public export
-Uninhabited (Nothing = Just y) where
-  uninhabited Refl impossible
+-- public export
+-- Uninhabited (Nothing = Just y) where
+--   uninhabited Refl impossible
 
-public export
-Uninhabited (Left e = Right x) where
-  uninhabited Refl impossible
+-- public export
+-- Uninhabited (Left e = Right x) where
+--   uninhabited Refl impossible
 
-public export
-Uninhabited (Right x = Left e) where
-  uninhabited Refl impossible
+-- public export
+-- Uninhabited (Right x = Left e) where
+--   uninhabited Refl impossible
 
 export
 notTrueIsFalse : {1 b : Bool} -> Not (b = True) -> b = False

@@ -9,8 +9,8 @@ import Decidable.Equality
 ||| Heap shape
 public export
 data Heap
-  ||| Single integer
-  = Single
+  = ||| Single integer
+    Single
 
 export
 DecEq Heap where
