@@ -78,11 +78,36 @@ labels : List (Label, Task h a) -> List Label
 labels = map fst . filter (not . failing . snd) --> [ l | (l, t) <- _, not (failing t) ] but using this in proofs is tedious
 
 public export
-options : (Task h a) -> List (Input Symbolic)
-options (Edit n (Select ts)) = map (\l => Option n l) (labels ts) --> [ (n, l) | l <- labels ts ]
+options : (Task h a) -> List (Name, Label)
+options (Edit k (Select ts)) = map (\l => (k, l)) (labels ts) --> [ (k, l) | l <- labels ts ]
 options (Trans _ t2)         = options t2
 options (Step t1 _)          = options t1
 options (_)                  = []
+
+---- Interface -----------------------------------------------------------------
+
+public export
+ui' : Nat -> Editor h a -> State h -> String
+ui' k (Enter)     _ = "[ ](" ++ show k ++ ")"
+ui' k (Update b)  _ = "[ " ++ show b ++ " ](" ++ show k ++ ")"
+ui' _ (View b)    _ = "[ " ++ show b ++ " ]"
+ui' k (Select ts) _ = "{ " ++ show (labels ts) ++ " }(" ++ show k ++ ")"
+ui' k (Change l)  s = "[ " ++ show (read l s) ++ " ](" ++ show k ++ ")"
+ui' _ (Watch l)   s = "[ " ++ show (read l s) ++ " ]"
+
+ui : (t : Task h a) -> IsNormal t => State h -> String
+ui (Edit (Named k) e) @{EditIsNormal}         s = ui' k e s
+ui (Trans _ t2)       @{TransIsNormal n2}     s = ui t2 s
+ui (Pair t1 t2)       @{PairIsNormal n1 n2}   s = ui t1 s ++ "<&>" ++ ui t2 s
+ui (Done _)           @{DoneIsNormal}         _ = "[ .. ]"
+ui (Choose t1 t2)     @{ChooseIsNormal n1 n2} s = ui t1 s ++ "<|>" ++ ui t2 s
+ui (Fail)             @{FailIsNormal}         _ = "fail"
+ui (Step t1 e2)       @{StepIsNormal n1}      s = ui t1 s ++ ">>={" ++ show ls ++ "}"
+  where
+    ls : List Label
+    ls = case value t1 s of
+      Nothing => []
+      Just v1 => map snd (options (e2 v1))
 
 ---- Inputs --------------------------------------------------------------------
 
@@ -106,4 +131,4 @@ inputs (Fail)             @{FailIsNormal}         _ = []
 inputs (Step t1 e2)       @{StepIsNormal n1}      s = inputs t1 s ++
   case value t1 s of
     Nothing => []
-    Just v1 => options (e2 v1)
+    Just v1 => map (uncurry Option) (options (e2 v1))

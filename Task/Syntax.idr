@@ -66,13 +66,13 @@ mutual
   public export
   data Editor : (h : Heap) -> (a : Type) -> Type where
     ---- Owned
-    Enter  : {a : Type} -> {auto ok : IsBasic a} -> Editor h a
-    Update : {a : Type} -> {auto ok : IsBasic a} -> (v : a) -> Editor h a
-    View   : {a : Type} -> {auto ok : IsBasic a} -> (v : a) -> Editor h a
+    Enter  : {a : Type} -> Show a => {auto ok : IsBasic a} -> Editor h a  -- Also needs `Show` bacause semantics transforms `Enter` into an `Update`
+    Update : {a : Type} -> Show a => {auto ok : IsBasic a} -> (v : a) -> Editor h a
+    View   : {a : Type} -> Show a => {auto ok : IsBasic a} -> (v : a) -> Editor h a
     Select : (ts : List (Label, Task h a)) -> Editor h a
     ---- Shared
-    Change : {a : Type} -> {auto ok : IsBasic a} -> (r : Ref h a) -> Editor h a
-    Watch  : {a : Type} -> {auto ok : IsBasic a} -> (r : Ref h a) -> Editor h a
+    Change : {a : Type} -> Show a => {auto ok : IsBasic a} -> (r : Ref h a) -> Editor h a
+    Watch  : {a : Type} -> Show a => {auto ok : IsBasic a} -> (r : Ref h a) -> Editor h a
 
 public export
 data IsNormal : Task h a -> Type where

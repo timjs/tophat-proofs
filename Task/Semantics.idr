@@ -114,7 +114,7 @@ pick : Task h a -> Label -> Either NotApplicable (Task h a)
 pick t@(Edit n (Select ts)) l =
   case lookup l ts of
     Just t' => do
-      if Option n l `elem` options t
+      if (n, l) `elem` options t
         then Right t'
         else Left $ CouldNotGoTo l
     Nothing => Left $ CouldNotFind l
