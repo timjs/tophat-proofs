@@ -71,18 +71,25 @@ watching (Choose t1 t2) @{ChooseIsNormal n1 n2} = watching t1 ++ watching t2
 watching (Fail)         @{FailIsNormal}         = []
 watching (Step t1 _)    @{StepIsNormal n1}      = watching t1
 
----- Options -------------------------------------------------------------------
+---- Options & Labels ----------------------------------------------------------
 
 public export
-labels : List (Label, Task h a) -> List Label
-labels = map fst . filter (not . failing . snd) --> [ l | (l, t) <- _, not (failing t) ] but using this in proofs is tedious
+possibilities : List (Label, Task h a) -> List Label
+possibilities = map fst . filter (not . failing . snd) --<< [ l | (l, t) <- _, not (failing t) ] but using this in proofs is tedious
 
 public export
 options : (Task h a) -> List (Name, Label)
-options (Edit k (Select ts)) = map (\l => (k, l)) (labels ts) --> [ (k, l) | l <- labels ts ]
+options (Edit k (Select ts)) = map (\l => (k, l)) (possibilities ts) --<< [ (k, l) | l <- possibilities ts ]
 options (Trans _ t2)         = options t2
 options (Step t1 _)          = options t1
 options (_)                  = []
+
+public export
+labels : (Task h a) -> List Label
+labels (Edit _ (Select ts)) = map fst ts --<< [ l | (l, _) <- ts ]
+labels (Trans _ t2)         = labels t2
+labels (Step t1 _)          = labels t1
+labels (_)                  = []
 
 ---- Interface -----------------------------------------------------------------
 
@@ -91,7 +98,7 @@ ui' : Nat -> Editor h a -> State h -> String
 ui' k (Enter)     _ = "[ ](" ++ show k ++ ")"
 ui' k (Update b)  _ = "[ " ++ show b ++ " ](" ++ show k ++ ")"
 ui' _ (View b)    _ = "[ " ++ show b ++ " ]"
-ui' k (Select ts) _ = "{ " ++ show (labels ts) ++ " }(" ++ show k ++ ")"
+ui' k (Select ts) _ = "{ " ++ show (map fst ts) ++ " }(" ++ show k ++ ")"
 ui' k (Change l)  s = "[ " ++ show (read l s) ++ " ](" ++ show k ++ ")"
 ui' _ (Watch l)   s = "[ " ++ show (read l s) ++ " ]"
 
@@ -99,7 +106,7 @@ ui : (t : Task h a) -> IsNormal t => State h -> String
 ui (Edit (Named k) e) @{EditIsNormal}         s = ui' k e s
 ui (Trans _ t2)       @{TransIsNormal n2}     s = ui t2 s
 ui (Pair t1 t2)       @{PairIsNormal n1 n2}   s = ui t1 s ++ "<&>" ++ ui t2 s
-ui (Done _)           @{DoneIsNormal}         _ = "[ .. ]"
+ui (Done _)           @{DoneIsNormal}         _ = "[ ? ]"
 ui (Choose t1 t2)     @{ChooseIsNormal n1 n2} s = ui t1 s ++ "<|>" ++ ui t2 s
 ui (Fail)             @{FailIsNormal}         _ = "fail"
 ui (Step t1 e2)       @{StepIsNormal n1}      s = ui t1 s ++ ">>={" ++ show ls ++ "}"
@@ -107,7 +114,7 @@ ui (Step t1 e2)       @{StepIsNormal n1}      s = ui t1 s ++ ">>={" ++ show ls +
     ls : List Label
     ls = case value t1 s of
       Nothing => []
-      Just v1 => map snd (options (e2 v1))
+      Just v1 => labels (e2 v1)
 
 ---- Inputs --------------------------------------------------------------------
 
@@ -116,7 +123,7 @@ inputs' : Nat -> Editor h a -> List (Input Symbolic)
 inputs' k (Enter {a})    = [Insert k (Symbol a)]
 inputs' k (Update {a} _) = [Insert k (Symbol a)]
 inputs' k (View {a} _)   = []
-inputs' k (Select ts)    = map (\l => Pick k l) (labels ts)
+inputs' k (Select ts)    = map (\l => Pick k l) (possibilities ts)
 inputs' k (Change {a} _) = [Insert k (Symbol a)]
 inputs' k (Watch {a} _)  = []
 
