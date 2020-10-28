@@ -150,3 +150,13 @@ append_results_empties {l1 = []}        {l2 = []}        prf = (Refl, Refl)
 append_results_empties {l1 = []}        {l2 = (y :: ys)} prf = absurd prf
 append_results_empties {l1 = (x :: xs)} {l2 = []}        prf = absurd prf
 append_results_empties {l1 = (x :: xs)} {l2 = (y :: ys)} prf = absurd prf
+
+---- Comprehensions ------------------------------------------------------------
+
+consEq : x = y -> xs = ys -> the (List a) (x :: xs) = the (List a) (y :: ys)
+consEq Refl Refl = Refl
+
+export
+comprehensionIsMap : {xs : List a} -> [ f x | x <- xs ] = map f xs
+comprehensionIsMap {xs = []} = Refl
+comprehensionIsMap {xs = y :: ys} = consEq Refl (comprehensionIsMap {xs = ys})
