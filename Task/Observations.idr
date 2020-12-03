@@ -73,6 +73,7 @@ watching (Step t1 _)    @{StepIsNormal n1}      = watching t1
 
 ---- Options & Labels ----------------------------------------------------------
 
+||| All *enabled* labels which could be sent to a task.
 public export
 possibilities : List (Label, Task h a) -> List Label
 possibilities = map fst . filter (not . failing . snd) --<< [ l | (l, t) <- _, not (failing t) ] but using this in proofs is tedious
@@ -84,6 +85,7 @@ options (Trans _ t2)         = options t2
 options (Step t1 _)          = options t1
 options (_)                  = []
 
+||| All *enabled and disabled* labels which could be sent to a task.
 public export
 labels : (Task h a) -> List Label
 labels (Edit _ (Select ts)) = map fst ts --<< [ l | (l, _) <- ts ]
