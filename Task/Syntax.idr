@@ -1,8 +1,8 @@
 module Task.Syntax
 
 import Helpers
+import public Data.Basic
 import public Task.Heap
-import public Task.Types
 
 %default total
 
