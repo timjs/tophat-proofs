@@ -61,7 +61,7 @@ mutual
     Repeat : (t1 : Task h a) -> Task h a
     ---- Stores
     -- Share : {auto ok : IsBasic a} -> a -> Task h (Ref h a)
-    Assign : {auto ok : IsBasic a} -> (v : a) -> (r : Ref h a) -> Task h ()
+    Assign : {a : Type} -> {auto ok : IsBasic a} -> (v : a) -> (r : Ref h a) -> Task h ()
 
   public export
   data Editor : (h : Shape) -> (a : Type) -> Type where

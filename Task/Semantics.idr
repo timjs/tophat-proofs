@@ -23,79 +23,84 @@ data NotApplicable
 
 ---- Normalisation -------------------------------------------------------------
 
-get : (Stream Nat, Heap h) -> Heap h
+State : Shape -> Type
+State h = (Stream Nat, Heap h)
+
+get : State h -> Heap h
 get = snd
 
-modify : (Heap h -> Heap h) -> (Stream Nat, Heap h) -> (Stream Nat, Heap h)
+modify : (Heap h -> Heap h) -> State h -> State h
 modify f (ns, s) = (ns, f s)
 
-fresh : (Stream Nat, Heap h) -> (Nat, (Stream Nat, Heap h))
+fresh : State h -> (Nat, State h)
 fresh (n :: ns, s) = (n, (ns, s))
 
 public export
-normalise : Task h a -> (Stream Nat, Heap h) -> (NormalisedTask h a, (Stream Nat, Heap h))
+normalise : Task h a -> State h -> (NormalisedTask h a, State h, List (Some (Ref h)))
 ---- Step
 normalise (Step t1 e2) s =
-  let ((t1' ** n1'), s') = normalise t1 s
+  let ((t1' ** n1'), s', d') = normalise t1 s
       stay = (Step t1' e2 ** StepIsNormal n1')
    in case value t1' (get s') of
-    Nothing => (stay, s') -- N-StepNone
+    Nothing => (stay, s', d') -- N-StepNone
     Just v1 =>
       let t2 = e2 v1
        in if failing t2
-        then (stay, s') -- N-StepFail
+        then (stay, s', d') -- N-StepFail
         else if not $ isNil $ options t2
-          then (stay, s') -- N-StepWait
+          then (stay, s', d') -- N-StepWait
           --> Note that Idris2 can't prove termination when writing `t2` instead of `e2 v1`, see #493
-          else normalise (e2 v1) s' -- N-StepCont
+          else
+            let ((t2' ** n2'), s'', d'') = normalise (e2 v1) s' -- N-StepCont
+             in ((t2' ** n2'), s'', d' ++ d'')
 ---- Choose
 normalise (Choose t1 t2) s =
-  let ((t1' ** n1'), s') = normalise t1 s
+  let ((t1' ** n1'), s', d') = normalise t1 s
    in case value t1' (get s') of
-    Just _ => ((t1' ** n1'), s') -- N-ChooseLeft
+    Just _ => ((t1' ** n1'), s', d') -- N-ChooseLeft
     Nothing =>
-      let ((t2' ** n2'), s'') = normalise t2 s'
+      let ((t2' ** n2'), s'', d'') = normalise t2 s'
        in case value t2' (get s'') of
-        Just _ => ((t2' ** n2'), s'') -- N-ChooseRight
-        Nothing => ((Choose t1' t2' ** ChooseIsNormal n1' n2'), s'') -- N-ChooseNone
+        Just _ => ((t2' ** n2'), s'', d' ++ d'') -- N-ChooseRight
+        Nothing => ((Choose t1' t2' ** ChooseIsNormal n1' n2'), s'', d' ++ d'') -- N-ChooseNone
 ---- Converge
 normalise (Trans f t2) s =
-  let ((t2' ** n2'), s') = normalise t2 s
-   in ((Trans f t2' ** TransIsNormal n2'), s') -- N-Trans
+  let ((t2' ** n2'), s', d') = normalise t2 s
+   in ((Trans f t2' ** TransIsNormal n2'), s', d') -- N-Trans
 normalise (Pair t1 t2) s =
-  let ((t1' ** n1'), s')  = normalise t1 s
-      ((t2' ** n2'), s'') = normalise t2 s'
-   in ((Pair t1' t2' ** PairIsNormal n1' n2'), s'') -- N-Pair
+  let ((t1' ** n1'), s', d')  = normalise t1 s
+      ((t2' ** n2'), s'', d'') = normalise t2 s'
+   in ((Pair t1' t2' ** PairIsNormal n1' n2'), s'', d' ++ d'') -- N-Pair
 ---- Ready
 normalise (Done x) s =
-  ((Done x ** DoneIsNormal), s) -- N-Done
+  ((Done x ** DoneIsNormal), s, []) -- N-Done
 normalise (Fail) s =
-  ((Fail ** FailIsNormal), s) -- N-Fail
+  ((Fail ** FailIsNormal), s, []) -- N-Fail
 ---- Name
 normalise (Edit Unnamed e) s =
   let (k, s') = fresh s
-   in ((Edit (Named k) e ** EditIsNormal), s') -- N-Name
+   in ((Edit (Named k) e ** EditIsNormal), s', []) -- N-Name
 normalise (Edit (Named k) e) s
-  = ((Edit (Named k) e ** EditIsNormal), s) -- N-Editor
+  = ((Edit (Named k) e ** EditIsNormal), s, []) -- N-Editor
 ---- Resolve
 normalise (Repeat t1) s =
-  let ((t1' ** n1'), s') = normalise t1 s
-   in ((Step t1' (\x => Edit Unnamed (Select ["Repeat" ~> Repeat t1, "Exit" ~> Done x])) ** StepIsNormal n1'), s') -- N-Repeat
+  let ((t1' ** n1'), s', d') = normalise t1 s
+   in ((Step t1' (\x => Edit Unnamed (Select ["Repeat" ~> Repeat t1, "Exit" ~> Done x])) ** StepIsNormal n1'), s', d') -- N-Repeat
   -- normalise (Step t1 (\x => Edit Unnamed (Select ["Repeat" ~> Repeat t1, "Exit" ~> Done x]))) s <-- Should be equivallent
 normalise (Assert p) s =
-  ((Done p ** DoneIsNormal), s) -- N-Assert
+  ((Done p ** DoneIsNormal), s, []) -- N-Assert
 -- normalise (Share b) s =
 --   let (l, s') = modify (alloc b) s
 --    in ((Done l ** DoneIsNormal), s')
-normalise (Assign b l) s =
+normalise (Assign {a} b l) s =
   let s' = modify (write b l) s
-   in ((Done () ** DoneIsNormal), s')
+   in ((Done () ** DoneIsNormal), s', [(a ** l)])
   -- tell [pack r]
 
 ---- Handling ------------------------------------------------------------------
 
 public export
-insert : Editor h a -> Concrete -> Heap h -> Either NotApplicable (Editor h a, Heap h)
+insert : Editor h a -> Concrete -> State h -> Either NotApplicable (Editor h a, State h)
 insert (Enter {a} {ok}) (Value {a'} {ok'} v') s with (decBasic ok ok')
   insert (Enter {a} {ok}) (Value {a'=a } {ok'=ok } v') s | Yes Refl = Right (Update v', s)
   insert (Enter {a} {ok}) (Value {a'=a'} {ok'=ok'} v') s | No _ = Left $ CouldNotChangeVal a' a
@@ -103,7 +108,7 @@ insert (Update {a} {ok} v) (Value {a'} {ok'} v') s with (decBasic ok ok')
   insert (Update {a} {ok} v) (Value {a'=a } {ok'=ok } v') s | Yes Refl = Right (Update v', s)
   insert (Update {a} {ok} v) (Value {a'=a'} {ok'=ok'} v') s | No _ = Left $ CouldNotChangeVal a' a
 insert (Change {a} {ok} v) (Value {a'} {ok'} v') s with (decBasic ok ok')
-  insert (Change {a} {ok} l) (Value {a'=a } {ok'=ok } v') s | Yes Refl = Right (Change l, write v' l s)
+  insert (Change {a} {ok} l) (Value {a'=a } {ok'=ok } v') s | Yes Refl = Right (Change l, modify (write v' l) s)
   insert (Change {a} {ok} l) (Value {a'=a'} {ok'=ok'} v') s | No _ = Left $ CouldNotChangeRef a' a
 insert (View _) c _ = Left $ CouldNotHandleValue c
 insert (Watch _) c _ = Left $ CouldNotHandleValue c
@@ -129,7 +134,7 @@ pick (Step t1 e2) l =
 pick _ _ = Left $ CouldNotPick
 
 public export
-handle : (t : Task h a) -> IsNormal t => Input Concrete -> Heap h -> Either NotApplicable (Task h a, Heap h)
+handle : (t : Task h a) -> IsNormal t => Input Concrete -> State h -> Either NotApplicable (Task h a, State h)
 ---- Unnamed
 handle (Edit Unnamed e) i s =
   Left $ CouldNotHandle i
@@ -160,7 +165,7 @@ handle (Step t1 e2) @{StepIsNormal n1} i s =
   case handle t1 i s of
     Right (t1', s') => Right (Step t1' e2, s') -- H-Step
     Left _ => case i of
-      Option Unnamed l => case value t1 s of
+      Option Unnamed l => case value t1 (get s) of
         Just v1 => case pick (e2 v1) l of
           Right t2' => Right (t2', s) -- H-Preselect
           Left x => Left x
