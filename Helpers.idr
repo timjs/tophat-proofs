@@ -164,7 +164,7 @@ isItRight : (v : Either e a) -> Dec (IsRight v)
 isItRight (Right _) = Yes ItIsRight
 isItRight (Left  _) = No absurd
 
----- IsItNil or IsItCon -----------------------------------------------------
+---- IsItNil or IsItCons -------------------------------------------------------
 
 public export
 IsNil : List a -> Type
