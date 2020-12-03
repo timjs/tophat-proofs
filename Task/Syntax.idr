@@ -2,7 +2,7 @@ module Task.Syntax
 
 import Helpers
 import public Data.Basic
-import public Task.Heap
+import public Data.Heap
 
 %default total
 
@@ -45,7 +45,7 @@ DecEq Name where
 mutual
 
   public export
-  data Task : (h : Heap) -> (a : Type) -> Type where
+  data Task : (h : Shape) -> (a : Type) -> Type where
     ---- Editors
     Edit   : (n : Name) -> (e : Editor h a) -> Task h a
     ---- Parallels
@@ -64,7 +64,7 @@ mutual
     Assign : {auto ok : IsBasic a} -> (v : a) -> (r : Ref h a) -> Task h ()
 
   public export
-  data Editor : (h : Heap) -> (a : Type) -> Type where
+  data Editor : (h : Shape) -> (a : Type) -> Type where
     ---- Owned
     Enter  : {a : Type} -> Show a => {auto ok : IsBasic a} -> Editor h a  -- Also needs `Show` bacause semantics transforms `Enter` into an `Update`
     Update : {a : Type} -> Show a => {auto ok : IsBasic a} -> (v : a) -> Editor h a
@@ -85,7 +85,7 @@ data IsNormal : Task h a -> Type where
   StepIsNormal   : IsNormal t1 -> IsNormal (Step t1 c)
 
 public export
-NormalisedTask : Heap -> Type -> Type
+NormalisedTask : Shape -> Type -> Type
 NormalisedTask h a = (t : Task h a ** IsNormal t)
 
 ---- Inputs & Options ----------------------------------------------------------

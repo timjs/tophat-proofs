@@ -1,4 +1,4 @@
-module Task.Heap
+module Data.Heap
 
 import Decidable.Equality
 
@@ -8,32 +8,32 @@ import Decidable.Equality
 
 ||| Heap shape
 public export
-data Heap
+data Shape
   = ||| Single integer
     Single
 
 export
-DecEq Heap where
+DecEq Shape where
   decEq (Single) (Single) = Yes Refl
 
 ||| References into the heap
 public export
-data Ref : Heap -> Type -> Type where
+data Ref : Shape -> Type -> Type where
   ||| Location of single integer
   Loc : Ref Single Int
 
 ||| Concrete heap of certain shape
 export
-data State : Heap -> Type where
+data Heap : Shape -> Type where
   ||| Value of single integer
-  Saved : Int -> State Single
+  Saved : Int -> Heap Single
 
 export
-read : Ref h t -> State h -> t
+read : Ref h t -> Heap h -> t
 read Loc (Saved x) = x
 
 export
-write : t -> Ref h t -> State h -> State h
+write : t -> Ref h t -> Heap h -> Heap h
 write y Loc (Saved x) = Saved y
 
 {-

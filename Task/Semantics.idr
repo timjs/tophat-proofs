@@ -23,17 +23,17 @@ data NotApplicable
 
 ---- Normalisation -------------------------------------------------------------
 
-get : (Stream Nat, State h) -> State h
+get : (Stream Nat, Heap h) -> Heap h
 get = snd
 
-modify : (State h -> State h) -> (Stream Nat, State h) -> (Stream Nat, State h)
+modify : (Heap h -> Heap h) -> (Stream Nat, Heap h) -> (Stream Nat, Heap h)
 modify f (ns, s) = (ns, f s)
 
-fresh : (Stream Nat, State h) -> (Nat, (Stream Nat, State h))
+fresh : (Stream Nat, Heap h) -> (Nat, (Stream Nat, Heap h))
 fresh (n :: ns, s) = (n, (ns, s))
 
 public export
-normalise : Task h a -> (Stream Nat, State h) -> (NormalisedTask h a, (Stream Nat, State h))
+normalise : Task h a -> (Stream Nat, Heap h) -> (NormalisedTask h a, (Stream Nat, Heap h))
 ---- Step
 normalise (Step t1 e2) s =
   let ((t1' ** n1'), s') = normalise t1 s
@@ -46,7 +46,7 @@ normalise (Step t1 e2) s =
         then (stay, s') -- N-StepFail
         else if not $ isNil $ options t2
           then (stay, s') -- N-StepWait
-          --> Note that Idris2 can't prove termination when writing `t'` instead of `e2 v1`, see #493
+          --> Note that Idris2 can't prove termination when writing `t2` instead of `e2 v1`, see #493
           else normalise (e2 v1) s' -- N-StepCont
 ---- Choose
 normalise (Choose t1 t2) s =
@@ -95,7 +95,7 @@ normalise (Assign b l) s =
 ---- Handling ------------------------------------------------------------------
 
 public export
-insert : Editor h a -> Concrete -> State h -> Either NotApplicable (Editor h a, State h)
+insert : Editor h a -> Concrete -> Heap h -> Either NotApplicable (Editor h a, Heap h)
 insert (Enter {a} {ok}) (Value {a'} {ok'} v') s with (decBasic ok ok')
   insert (Enter {a} {ok}) (Value {a'=a } {ok'=ok } v') s | Yes Refl = Right (Update v', s)
   insert (Enter {a} {ok}) (Value {a'=a'} {ok'=ok'} v') s | No _ = Left $ CouldNotChangeVal a' a
@@ -129,7 +129,7 @@ pick (Step t1 e2) l =
 pick _ _ = Left $ CouldNotPick
 
 public export
-handle : (t : Task h a) -> IsNormal t => Input Concrete -> State h -> Either NotApplicable (Task h a, State h)
+handle : (t : Task h a) -> IsNormal t => Input Concrete -> Heap h -> Either NotApplicable (Task h a, Heap h)
 ---- Unnamed
 handle (Edit Unnamed e) i s =
   Left $ CouldNotHandle i
@@ -181,7 +181,6 @@ handle (Choose t1 t2) @{ChooseIsNormal n1 n2} i s =
 ---- Rest
 handle (Done _) i _ = Left $ CouldNotHandle i
 handle (Fail) i _ = Left $ CouldNotHandle i
-
 
 {-
 ---- Fixation ------------------------------------------------------------------

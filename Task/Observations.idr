@@ -8,7 +8,7 @@ import Task.Syntax
 ---- Values --------------------------------------------------------------------
 
 public export
-value' : Editor h a -> State h -> Maybe a
+value' : Editor h a -> Heap h -> Maybe a
 value' (Enter)    _ = Nothing
 value' (Update b) _ = Just b
 value' (View b)   _ = Just b
@@ -17,7 +17,7 @@ value' (Change l) s = Just (read l s)
 value' (Watch l)  s = Just (read l s)
 
 public export
-value : (t : Task h a) -> IsNormal t => State h -> Maybe a
+value : (t : Task h a) -> IsNormal t => Heap h -> Maybe a
 value (Edit (Named _) e) @{EditIsNormal}         s = value' e s
 value (Trans f t1)       @{TransIsNormal n1}     s = map f (value t1 s)
 value (Pair t1 t2)       @{PairIsNormal n1 n2}   s = value t1 s <&> value t2 s
@@ -96,7 +96,7 @@ labels (_)                  = []
 ---- Interface -----------------------------------------------------------------
 
 public export
-ui' : Nat -> Editor h a -> State h -> String
+ui' : Nat -> Editor h a -> Heap h -> String
 ui' k (Enter)     _ = "[ ](" ++ show k ++ ")"
 ui' k (Update b)  _ = "[ " ++ show b ++ " ](" ++ show k ++ ")"
 ui' _ (View b)    _ = "[ " ++ show b ++ " ]"
@@ -104,7 +104,7 @@ ui' k (Select ts) _ = "{ " ++ show (map fst ts) ++ " }(" ++ show k ++ ")"
 ui' k (Change l)  s = "[ " ++ show (read l s) ++ " ](" ++ show k ++ ")"
 ui' _ (Watch l)   s = "[ " ++ show (read l s) ++ " ]"
 
-ui : (t : Task h a) -> IsNormal t => State h -> String
+ui : (t : Task h a) -> IsNormal t => Heap h -> String
 ui (Edit (Named k) e) @{EditIsNormal}         s = ui' k e s
 ui (Trans _ t2)       @{TransIsNormal n2}     s = ui t2 s
 ui (Pair t1 t2)       @{PairIsNormal n1 n2}   s = ui t1 s ++ "<&>" ++ ui t2 s
@@ -130,7 +130,7 @@ inputs' k (Change {a} _) = [Insert k (Symbol a)]
 inputs' k (Watch {a} _)  = []
 
 public export
-inputs : (t : Task h a) -> IsNormal t => State h -> List (Input Symbolic)
+inputs : (t : Task h a) -> IsNormal t => Heap h -> List (Input Symbolic)
 inputs (Edit (Named k) e) @{EditIsNormal}         s = inputs' k e
 inputs (Trans _ t2)       @{TransIsNormal n2}     s = inputs t2 s
 inputs (Pair t1 t2)       @{PairIsNormal n1 n2}   s = inputs t1 s ++ inputs t2 s
