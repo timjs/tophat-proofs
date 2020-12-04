@@ -1,6 +1,8 @@
 module Data.Heap
 
+import Helpers
 import Decidable.Equality
+import Data.Basic
 
 %default total
 
@@ -21,6 +23,10 @@ public export
 data Ref : Shape -> Type -> Type where
   ||| Location of single integer
   Loc : Ref Single Int
+
+export
+implementation Eq1 (Ref h) where
+  eq1 Loc Loc = True
 
 ||| Concrete heap of certain shape
 export

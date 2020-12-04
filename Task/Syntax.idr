@@ -88,6 +88,10 @@ public export
 NormalisedTask : Shape -> Type -> Type
 NormalisedTask h a = (t : Task h a ** IsNormal t)
 
+public export
+Delta : Shape -> Type
+Delta h = List (Some (Ref h))
+
 ---- Inputs & Options ----------------------------------------------------------
 
 ---- Concrete inputs

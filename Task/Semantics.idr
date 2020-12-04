@@ -36,7 +36,7 @@ fresh : State h -> (Nat, State h)
 fresh (n :: ns, s) = (n, (ns, s))
 
 public export
-normalise : Task h a -> State h -> (NormalisedTask h a, State h, List (Some (Ref h)))
+normalise : Task h a -> State h -> (NormalisedTask h a, State h, Delta h)
 ---- Step
 normalise (Step t1 e2) s =
   let ((t1' ** n1'), s', d') = normalise t1 s
@@ -51,8 +51,8 @@ normalise (Step t1 e2) s =
           then (stay, s', d') -- N-StepWait
           --> Note that Idris2 can't prove termination when writing `t2` instead of `e2 v1`, see #493
           else
-            let ((t2' ** n2'), s'', d'') = normalise (e2 v1) s' -- N-StepCont
-             in ((t2' ** n2'), s'', d' ++ d'')
+            let (n2', s'', d'') = normalise (e2 v1) s' -- N-StepCont
+             in (n2', s'', d' ++ d'')
 ---- Choose
 normalise (Choose t1 t2) s =
   let ((t1' ** n1'), s', d') = normalise t1 s
@@ -92,10 +92,9 @@ normalise (Assert p) s =
 -- normalise (Share b) s =
 --   let (l, s') = modify (alloc b) s
 --    in ((Done l ** DoneIsNormal), s')
-normalise (Assign {a} b l) s =
+normalise (Assign {a} {ok} b l) s =
   let s' = modify (write b l) s
-   in ((Done () ** DoneIsNormal), s', [(a ** l)])
-  -- tell [pack r]
+   in ((Done () ** DoneIsNormal), s', [(a ** (ok, l))])
 
 ---- Handling ------------------------------------------------------------------
 
@@ -187,46 +186,31 @@ handle (Choose t1 t2) @{ChooseIsNormal n1 n2} i s =
 handle (Done _) i _ = Left $ CouldNotHandle i
 handle (Fail) i _ = Left $ CouldNotHandle i
 
-{-
 ---- Fixation ------------------------------------------------------------------
 
-fixate : MonadSupply Nat m => MonadState (State h) m =>
-  Task h a -> m (Task h a)
-fixate = normalise
-  -- (d, t') <- runWriter t
-  -- (d', t'') <- normalise t' |> runWriter
-  -- t'' <- normalise t
-  -- log Info $ DidNormalise (display t'')
-  -- let ws = watching t''
-  -- let ds = d `union` d'
-  -- let os = ds `intersect` ws
-  -- case os of
-    -- [] => do
-      -- log Info $ DidStabilise (length ds) (length ws)
-      -- let t''' = balance t''
-      -- log Info $ DidBalance (display t''')
-  -- pure t'' -- F-Done
-    -- _ => do
-      -- log Info $ DidNotStabilise (length ds) (length ws) (length os)
-      -- fixate $ pure t'' -- F-Loop
+fixate : Task h a -> State h -> Delta h -> (NormalisedTask h a, State h)
+fixate t s d =
+  let ((t' ** n'), s', d') = normalise t s in
+    if intersect (d ++ d') (watching t') == []
+      then ((t' ** n'), s')
+      else fixate (assert_smaller t t') s' d'
 
 ---- Initialisation ------------------------------------------------------------
 
-initialise : MonadSupply Nat m => MonadState (State h) m =>
-  Task h a -> m (Task h a)
-initialise = fixate
-  -- log Info $ DidStart (display t)
-  -- fixate t
+initialise : Task h a -> State h -> (NormalisedTask h a, State h)
+initialise t s = fixate t s []
 
 ---- Interaction ---------------------------------------------------------------
 
-interact : MonadSupply Nat m => MonadState (State h) m =>
-  Task h a -> Input Concrete -> m (Task h a)
-interact t i = do
-  xt <- handle t i
-  case xt of
-    Left x => do
-      -- log Warning e
-      pure t
-    Right t' => fixate t'
-    -}
+-- interact : NormalisedTask h a -> Input Concrete -> State h -> (NormalisedTask h a, State h)
+-- interact n i s =
+--   let (t', s', d') = handle n i s in
+--   fixate t' s' d'
+
+{-
+---- Execution -----------------------------------------------------------------
+
+execute : Task h a -> State h -> List (Input Concrete) -> (a, State h)
+execute t s is =
+  let (n', s') = initialise t s in
+-}

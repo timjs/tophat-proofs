@@ -54,15 +54,17 @@ mutual
 
 ---- Watching ------------------------------------------------------------------
 
-watching' : Editor h a -> List (Some (Ref h))
+public export
+watching' : Editor h a -> Delta h
 watching' (Enter)        = []
 watching' (Update _)     = []
 watching' (View _)       = []
 watching' (Select _)     = []
-watching' (Change {a} l) = [(a ** l)]
-watching' (Watch {a} l)  = [(a ** l)]
+watching' (Change {a} {ok} l) = [(a ** (ok, l))]
+watching' (Watch {a} {ok} l)  = [(a ** (ok, l))]
 
-watching : (t : Task h a) -> IsNormal t => List (Some (Ref h))
+public export
+watching : (t : Task h a) -> IsNormal t => Delta h
 watching (Edit _ e)     @{EditIsNormal}         = watching' e
 watching (Trans _ t2)   @{TransIsNormal n2}     = watching t2
 watching (Pair t1 t2)   @{PairIsNormal n1 n2}   = watching t1 ++ watching t2

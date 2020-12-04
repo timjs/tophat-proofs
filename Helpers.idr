@@ -19,6 +19,22 @@ public export
 (?=) : DecEq t => (x : t) -> (y : t) -> Dec (x = y)
 (?=) = decEq
 
+---- Dependent pairs -----------------------------------------------------------
+
+infixr 0 |-
+
+(|-) : 	(1 x : a) -> (1 p : f x) -> DPair a f
+(|-) = MkDPair
+
+---- Equality of type constructors ---------------------------------------------
+
+public export
+interface Eq1 f where
+  -- (===) : Eq a => f a -> f a -> Bool
+  eq1 : Eq a => f a -> f a -> Bool
+
+-- infix 4 ===
+
 ---- Logic ---------------------------------------------------------------------
 
 infixr 6 /\
@@ -91,12 +107,6 @@ infixr 0 ~>
 public export
 (~>) : a -> b -> (a, b)
 (~>) x y = (x, y)
-
----- Existentials --------------------------------------------------------------
-
-public export
-Some : (Type -> Type) -> Type
-Some f = (a : Type ** f a)
 
 ---- IsItTrue or IsItFalse -----------------------------------------------------
 
