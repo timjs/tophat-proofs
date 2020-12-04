@@ -92,22 +92,22 @@ normalise (Assert p) s =
 -- normalise (Share b) s =
 --   let (l, s') = modify (alloc b) s
 --    in ((Done l ** DoneIsNormal), s')
-normalise (Assign {a} {ok} b l) s =
+normalise (Assign b l) s =
   let s' = modify (write b l) s
-   in ((Done () ** DoneIsNormal), s', [(a ** (ok, l))])
+   in ((Done () ** DoneIsNormal), s', [some l])
 
 ---- Handling ------------------------------------------------------------------
 
 public export
-insert : Editor h a -> Concrete -> State h -> Either NotApplicable (Editor h a, State h)
+insert : Editor h a -> Concrete -> State h -> Either NotApplicable (Editor h a, State h, Delta h)
 insert (Enter {a} {ok}) (Value {a'} {ok'} v') s with (decBasic ok ok')
-  insert (Enter {a} {ok}) (Value {a'=a } {ok'=ok } v') s | Yes Refl = Right (Update v', s)
+  insert (Enter {a} {ok}) (Value {a'=a } {ok'=ok } v') s | Yes Refl = Right (Update v', s, [])
   insert (Enter {a} {ok}) (Value {a'=a'} {ok'=ok'} v') s | No _ = Left $ CouldNotChangeVal a' a
 insert (Update {a} {ok} v) (Value {a'} {ok'} v') s with (decBasic ok ok')
-  insert (Update {a} {ok} v) (Value {a'=a } {ok'=ok } v') s | Yes Refl = Right (Update v', s)
+  insert (Update {a} {ok} v) (Value {a'=a } {ok'=ok } v') s | Yes Refl = Right (Update v', s, [])
   insert (Update {a} {ok} v) (Value {a'=a'} {ok'=ok'} v') s | No _ = Left $ CouldNotChangeVal a' a
 insert (Change {a} {ok} v) (Value {a'} {ok'} v') s with (decBasic ok ok')
-  insert (Change {a} {ok} l) (Value {a'=a } {ok'=ok } v') s | Yes Refl = Right (Change l, modify (write v' l) s)
+  insert (Change {a} {ok} l) (Value {a'=a } {ok'=ok } v') s | Yes Refl = Right (Change l, modify (write v' l) s, [some l])
   insert (Change {a} {ok} l) (Value {a'=a'} {ok'=ok'} v') s | No _ = Left $ CouldNotChangeRef a' a
 insert (View _) c _ = Left $ CouldNotHandleValue c
 insert (Watch _) c _ = Left $ CouldNotHandleValue c
@@ -133,7 +133,7 @@ pick (Step t1 e2) l =
 pick _ _ = Left $ CouldNotPick
 
 public export
-handle : NormalisedTask h a -> Input Concrete -> State h -> Either NotApplicable (Task h a, State h)
+handle : NormalisedTask h a -> Input Concrete -> State h -> Either NotApplicable (Task h a, State h, Delta h)
 ---- Unnamed
 handle (Edit Unnamed e ** _) i s =
   Left $ CouldNotHandle i
@@ -141,7 +141,7 @@ handle (Edit Unnamed e ** _) i s =
 handle (t@(Edit (Named k) (Select ts)) ** _) (Option (Named k') l) s =
   case k ?= k' of
     Yes Refl => case pick t l of
-      Right t' => Right (t', s) -- H-Select
+      Right t' => Right (t', s, []) -- H-Select
       Left x => Left x
     No _ => Left $ CouldNotMatch (Named k) (Named k')
 handle (Edit (Named k) (Select ts) ** _) i s =
@@ -150,7 +150,7 @@ handle (Edit (Named k) (Select ts) ** _) i s =
 handle (Edit (Named k) e ** _) (Insert k' c) s =
   case k ?= k' of
     Yes Refl => case insert e c s of
-      Right (e', s') => Right (Edit (Named k) e', s') -- H-Edit
+      Right (e', s', d') => Right (Edit (Named k) e', s', d') -- H-Edit
       Left x => Left x
     No _ => Left $ CouldNotMatch (Named k) (Named k')
 handle (Edit (Named k) e ** _) i s =
@@ -158,29 +158,29 @@ handle (Edit (Named k) e ** _) i s =
 ---- Pass
 handle (Trans e1 t2 ** TransIsNormal n2) i s =
   case handle (t2 ** n2) i s of
-    Right (t2', s') => Right (Trans e1 t2', s') -- H-Trans
+    Right (t2', s', d') => Right (Trans e1 t2', s', d') -- H-Trans
     Left x => Left x
 handle (Step t1 e2 ** StepIsNormal n1) i s =
   case handle (t1 ** n1) i s of
-    Right (t1', s') => Right (Step t1' e2, s') -- H-Step
+    Right (t1', s', d') => Right (Step t1' e2, s', d') -- H-Step
     Left _ => case i of
       Option Unnamed l => case value t1 (get s) of
         Just v1 => case pick (e2 v1) l of
-          Right t2' => Right (t2', s) -- H-Preselect
+          Right t2' => Right (t2', s, []) -- H-Preselect
           Left x => Left x
         Nothing => Left $ CouldNotContinue
       _ => Left $ CouldNotPick
 handle (Pair t1 t2 ** PairIsNormal n1 n2) i s =
   case handle (t1 ** n1) i s of
-    Right (t1', s') => Right (Pair t1' t2, s') -- H-PairFirst
+    Right (t1', s', d') => Right (Pair t1' t2, s', d') -- H-PairFirst
     Left _ => case handle (t2 ** n2) i s of
-      Right (t2', s') => Right (Pair t1 t2', s') -- H-PairSecond
+      Right (t2', s', d') => Right (Pair t1 t2', s', d') -- H-PairSecond
       Left x => Left x
 handle (Choose t1 t2 ** ChooseIsNormal n1 n2) i s =
   case handle (t1 ** n1) i s of
-    Right (t1', s') => Right (Choose t1' t2, s') -- H-ChooseFirst
+    Right (t1', s', d') => Right (Choose t1' t2, s', d') -- H-ChooseFirst
     Left _ => case handle (t2 ** n2) i s of
-      Right (t2', s') => Right (Choose t1 t2', s') -- H-ChoosSecond
+      Right (t2', s', d') => Right (Choose t1 t2', s', d') -- H-ChoosSecond
       Left x => Left x
 ---- Rest
 handle (Done _ ** _) i _ = Left $ CouldNotHandle i
