@@ -38,7 +38,7 @@ fresh (n :: ns, s) = (n, (ns, s))
 ---- Normalisation -------------------------------------------------------------
 
 public export
-normalise : Task h a -> State h -> (NormalisedTask h a, State h, Delta h)
+normalise : Task h a -> State h -> (Refined (Task h a) IsNormal, State h, Delta h)
 ---- Step
 normalise (Step t1 e2) s =
   let ((t1' ** n1'), s', d') = normalise t1 s
@@ -135,7 +135,7 @@ pick (Step t1 e2) l =
 pick _ _ = Left $ CouldNotPick
 
 public export
-handle : NormalisedTask h a -> Input Concrete -> State h -> Either NotApplicable (Task h a, State h, Delta h)
+handle : Refined (Task h a) IsNormal -> Input Concrete -> State h -> Either NotApplicable (Task h a, State h, Delta h)
 ---- Unnamed
 handle (Edit Unnamed e ** _) i s =
   Left $ CouldNotHandle i
@@ -190,7 +190,7 @@ handle (Fail ** _) i _ = Left $ CouldNotHandle i
 
 ---- Fixation ------------------------------------------------------------------
 
-fixate : Task h a -> State h -> Delta h -> (NormalisedTask h a, State h)
+fixate : Task h a -> State h -> Delta h -> (Refined (Task h a) IsNormal, State h)
 fixate t s d =
   let ((t' ** n'), s', d') = normalise t s in
     if intersect (d ++ d') (watching t') == []
@@ -199,12 +199,12 @@ fixate t s d =
 
 ---- Initialisation ------------------------------------------------------------
 
-initialise : Task h a -> State h -> (NormalisedTask h a, State h)
+initialise : Task h a -> State h -> (Refined (Task h a) IsNormal, State h)
 initialise t s = fixate t s []
 
 ---- Interaction ---------------------------------------------------------------
 
-interact : NormalisedTask h a -> Input Concrete -> State h -> Either NotApplicable (NormalisedTask h a, State h)
+interact : Refined (Task h a) IsNormal -> Input Concrete -> State h -> Either NotApplicable (Refined (Task h a) IsNormal, State h)
 interact n i s = case handle n i s of
   Left e => Left e
   Right (t', s', d') => Right (fixate t' s' d')

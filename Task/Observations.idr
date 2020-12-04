@@ -26,6 +26,17 @@ value (Choose t1 t2)     @{ChooseIsNormal n1 n2} s = value t1 s <|> value t2 s
 value (Fail)             @{FailIsNormal}         _ = Nothing
 value (Step _ _)         @{StepIsNormal n2}      _ = Nothing
 
+-- Cannot be automatically proven total by Idris...
+-- public export
+-- value : Refined (Task h a) IsNormal -> Heap h -> Maybe a
+-- value (Edit (Named _) e ** EditIsNormal)         s = value' e s
+-- value (Trans f t1       ** TransIsNormal n1)     s = map f (value (refine t1) s)
+-- value (Pair t1 t2       ** PairIsNormal n1 n2)   s = value (refine t1) s <&> value (refine t2) s
+-- value (Done v           ** DoneIsNormal)         _ = Just v
+-- value (Choose t1 t2     ** ChooseIsNormal n1 n2) s = value (refine t1) s <|> value (refine t2) s
+-- value (Fail             ** FailIsNormal)         _ = Nothing
+-- value (Step _ _         ** StepIsNormal n2)      _ = Nothing
+
 ---- Failing -------------------------------------------------------------------
 
 mutual

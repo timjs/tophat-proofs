@@ -19,6 +19,20 @@ public export
 (?=) : DecEq t => (x : t) -> (y : t) -> Dec (x = y)
 (?=) = decEq
 
+---- Refinements ---------------------------------------------------------------
+
+public export
+Refined : (a : Type) -> (f : a -> Type) -> Type
+Refined = DPair
+
+public export
+refine : (x : a) -> {auto p : f x} -> Refined a f
+refine x {p} = (x ** p)
+
+public export
+lose : Refined a f -> a
+lose (v ** _) = v
+
 ---- Equality of type constructors ---------------------------------------------
 
 public export
