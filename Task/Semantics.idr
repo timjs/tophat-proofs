@@ -21,7 +21,7 @@ data NotApplicable
   | CouldNotHandle (Input Concrete)
   | CouldNotHandleValue Concrete
 
----- Normalisation -------------------------------------------------------------
+---- State ---------------------------------------------------------------------
 
 State : Shape -> Type
 State h = (Stream Nat, Heap h)
@@ -34,6 +34,8 @@ modify f (ns, s) = (ns, f s)
 
 fresh : State h -> (Nat, State h)
 fresh (n :: ns, s) = (n, (ns, s))
+
+---- Normalisation -------------------------------------------------------------
 
 public export
 normalise : Task h a -> State h -> (NormalisedTask h a, State h, Delta h)
@@ -190,9 +192,9 @@ handle (Fail ** _) i _ = Left $ CouldNotHandle i
 
 fixate : Task h a -> State h -> Delta h -> (NormalisedTask h a, State h)
 fixate t s d =
-  let ((t' ** n'), s', d') = normalise t s in
+  let (n', s', d') = normalise t s in
     if intersect (d ++ d') (watching t') == []
-      then ((t' ** n'), s')
+      then (n', s')
       else fixate (assert_smaller t t') s' d'
 
 ---- Initialisation ------------------------------------------------------------
@@ -202,10 +204,10 @@ initialise t s = fixate t s []
 
 ---- Interaction ---------------------------------------------------------------
 
--- interact : NormalisedTask h a -> Input Concrete -> State h -> (NormalisedTask h a, State h)
--- interact n i s =
---   let (t', s', d') = handle n i s in
---   fixate t' s' d'
+interact : NormalisedTask h a -> Input Concrete -> State h -> Either NotApplicable (NormalisedTask h a, State h)
+interact n i s = case handle n i s of
+  Left e => Left e
+  Right (t', s', d') => Right (fixate t' s' d')
 
 {-
 ---- Execution -----------------------------------------------------------------
