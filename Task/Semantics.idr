@@ -192,9 +192,9 @@ handle (Fail ** _) i _ = Left $ CouldNotHandle i
 
 fixate : Task h a -> State h -> Delta h -> (NormalisedTask h a, State h)
 fixate t s d =
-  let (n', s', d') = normalise t s in
+  let ((t' ** n'), s', d') = normalise t s in
     if intersect (d ++ d') (watching t') == []
-      then (n', s')
+      then ((t' ** n'), s')
       else fixate (assert_smaller t t') s' d'
 
 ---- Initialisation ------------------------------------------------------------
