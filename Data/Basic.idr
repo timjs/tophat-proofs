@@ -114,6 +114,10 @@ public export
 Some : (Type -> Type) -> Type
 Some f = (a : Type ** (IsBasic a, f a))
 
+public export
+some : {a : Type} -> {auto ok : IsBasic a} -> f a -> Some f
+some {a} {ok} v = (a ** (ok, v))
+
 export
 implementation Eq1 f => Eq (Some f) where
   (==) (a1 ** (b1, v1)) (a2 ** (b2, v2)) with (decBasic b1 b2) --(a1 ?: a2)

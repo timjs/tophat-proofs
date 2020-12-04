@@ -56,12 +56,12 @@ mutual
 
 public export
 watching' : Editor h a -> Delta h
-watching' (Enter)        = []
-watching' (Update _)     = []
-watching' (View _)       = []
-watching' (Select _)     = []
-watching' (Change {a} {ok} l) = [(a ** (ok, l))]
-watching' (Watch {a} {ok} l)  = [(a ** (ok, l))]
+watching' (Enter)    = []
+watching' (Update _) = []
+watching' (View _)   = []
+watching' (Select _) = []
+watching' (Change l) = [some l]
+watching' (Watch l)  = [some l]
 
 public export
 watching : (t : Task h a) -> IsNormal t => Delta h
