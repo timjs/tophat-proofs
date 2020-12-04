@@ -19,13 +19,6 @@ public export
 (?=) : DecEq t => (x : t) -> (y : t) -> Dec (x = y)
 (?=) = decEq
 
----- Dependent pairs -----------------------------------------------------------
-
-infixr 0 |-
-
-(|-) : 	(1 x : a) -> (1 p : f x) -> DPair a f
-(|-) = MkDPair
-
 ---- Equality of type constructors ---------------------------------------------
 
 public export
