@@ -53,8 +53,8 @@ normalise (Step t1 e2) s =
           then (stay, s', d') -- N-StepWait
           --> Note that Idris2 can't prove termination when writing `t2` instead of `e2 v1`, see #493
           else
-            let (n2', s'', d'') = normalise (e2 v1) s' -- N-StepCont
-             in (n2', s'', d' ++ d'')
+            let (n2', s'', d'') = normalise (e2 v1) s'
+             in (n2', s'', d' ++ d'') -- N-StepCont
 ---- Choose
 normalise (Choose t1 t2) s =
   let ((t1' ** n1'), s', d') = normalise t1 s

@@ -1,4 +1,4 @@
-module Task.Proofs.Interaction
+module Task.Proofs.Failing
 
 import Helpers
 import Data.Maybe
