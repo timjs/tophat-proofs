@@ -21,6 +21,7 @@ data NotApplicable
   | CouldNotHandle (Input Concrete)
   | CouldNotHandleValue Concrete
   | ToFewInputs
+  | ToManyInputs (List (Input Concrete))
 
 ---- State ---------------------------------------------------------------------
 
@@ -218,8 +219,8 @@ execute t s is =
   go is n' s'
   where
     go : List (Input Concrete) -> Refined (Task h a) IsNormal -> State h -> Either NotApplicable (a, State h)
-    go is (t ** n) s = case value t (get s) of
-        Just v => Right (v, s)
-        Nothing => case is of
-          i :: is => interact (t ** n) i s >>= uncurry (go is)
-          [] => Left ToFewInputs
+    go is (t ** n) s with (value t (get s))
+      go []        (t ** n) s | Just v  = Right (v, s)
+      go []        (t ** n) s | Nothing = Left $ ToFewInputs
+      go is        (t ** n) s | Just v  = Left $ ToManyInputs is
+      go (i :: is) (t ** n) s | Nothing = interact (t ** n) i s >>= uncurry (go is)
