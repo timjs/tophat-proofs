@@ -29,6 +29,7 @@ export
 State : Shape -> Type
 State h = (Stream Nat, Heap h)
 
+export
 get : State h -> Heap h
 get = snd
 
@@ -138,35 +139,35 @@ pick (Step t1 e2) l =
 pick _ _ = Left $ CouldNotPick
 
 public export
-handle : Refined (Task h a) IsNormal -> Input Concrete -> State h -> Either NotApplicable (Task h a, State h, Delta h)
+handle : (t : Task h a) -> IsNormal t => Input Concrete -> State h -> Either NotApplicable (Task h a, State h, Delta h)
 ---- Unnamed
-handle (Edit Unnamed e ** _) i s =
+handle (Edit Unnamed e) i s =
   Left $ CouldNotHandle i
 ---- Selections
-handle (t@(Edit (Named k) (Select ts)) ** _) (Option (Named k') l) s =
+handle t@(Edit (Named k) (Select ts)) (Option (Named k') l) s =
   case k ?= k' of
     Yes Refl => case pick t l of
       Right t' => Right (t', s, []) -- H-Select
       Left x => Left x
     No _ => Left $ CouldNotMatch (Named k) (Named k')
-handle (Edit (Named k) (Select ts) ** _) i s =
+handle (Edit (Named k) (Select ts)) i s =
   Left $ CouldNotHandle i
 ---- Editors
-handle (Edit (Named k) e ** _) (Insert k' c) s =
+handle (Edit (Named k) e) (Insert k' c) s =
   case k ?= k' of
     Yes Refl => case insert e c s of
       Right (e', s', d') => Right (Edit (Named k) e', s', d') -- H-Edit
       Left x => Left x
     No _ => Left $ CouldNotMatch (Named k) (Named k')
-handle (Edit (Named k) e ** _) i s =
+handle (Edit (Named k) e) i s =
   Left $ CouldNotHandle i
 ---- Pass
-handle (Trans e1 t2 ** TransIsNormal n2) i s =
-  case handle (t2 ** n2) i s of
+handle (Trans e1 t2) @{TransIsNormal n2} i s =
+  case handle t2 i s of
     Right (t2', s', d') => Right (Trans e1 t2', s', d') -- H-Trans
     Left x => Left x
-handle (Step t1 e2 ** StepIsNormal n1) i s =
-  case handle (t1 ** n1) i s of
+handle (Step t1 e2) @{StepIsNormal n1} i s =
+  case handle t1 i s of
     Right (t1', s', d') => Right (Step t1' e2, s', d') -- H-Step
     Left _ => case i of
       Option Unnamed l => case value t1 (get s) of
@@ -175,21 +176,21 @@ handle (Step t1 e2 ** StepIsNormal n1) i s =
           Left x => Left x
         Nothing => Left $ CouldNotContinue
       _ => Left $ CouldNotPick
-handle (Pair t1 t2 ** PairIsNormal n1 n2) i s =
-  case handle (t1 ** n1) i s of
+handle (Pair t1 t2) @{PairIsNormal n1 n2} i s =
+  case handle t1 i s of
     Right (t1', s', d') => Right (Pair t1' t2, s', d') -- H-PairFirst
-    Left _ => case handle (t2 ** n2) i s of
+    Left _ => case handle t2 i s of
       Right (t2', s', d') => Right (Pair t1 t2', s', d') -- H-PairSecond
       Left x => Left x
-handle (Choose t1 t2 ** ChooseIsNormal n1 n2) i s =
-  case handle (t1 ** n1) i s of
+handle (Choose t1 t2) @{ChooseIsNormal n1 n2} i s =
+  case handle t1 i s of
     Right (t1', s', d') => Right (Choose t1' t2, s', d') -- H-ChooseFirst
-    Left _ => case handle (t2 ** n2) i s of
+    Left _ => case handle t2 i s of
       Right (t2', s', d') => Right (Choose t1 t2', s', d') -- H-ChoosSecond
       Left x => Left x
 ---- Rest
-handle (Done _ ** _) i _ = Left $ CouldNotHandle i
-handle (Fail ** _) i _ = Left $ CouldNotHandle i
+handle (Done _) i _ = Left $ CouldNotHandle i
+handle (Fail) i _ = Left $ CouldNotHandle i
 
 ---- Fixation ------------------------------------------------------------------
 
@@ -207,7 +208,7 @@ initialise t s = fixate t s []
 
 ---- Interaction ---------------------------------------------------------------
 
-interact : Refined (Task h a) IsNormal -> Input Concrete -> State h -> Either NotApplicable (Refined (Task h a) IsNormal, State h)
+interact : (t : Task h a) -> IsNormal t => Input Concrete -> State h -> Either NotApplicable (Refined (Task h a) IsNormal, State h)
 interact n i s = case handle n i s of
   Left e => Left e
   Right (t', s', d') => Right (fixate t' s' d')
@@ -216,12 +217,14 @@ interact n i s = case handle n i s of
 
 execute : Task h a -> State h -> List (Input Concrete) -> Either NotApplicable (a, State h)
 execute t s is =
-  let (n', s') = initialise t s in
-  go is n' s'
+  let ((t' ** n'), s') = initialise t s in
+  go is t' s'
   where
-    go : List (Input Concrete) -> Refined (Task h a) IsNormal -> State h -> Either NotApplicable (a, State h)
-    go is (t ** n) s with (value t (get s))
-      go []        (t ** n) s | Just v  = Right (v, s)
-      go []        (t ** n) s | Nothing = Left $ ToFewInputs
-      go is        (t ** n) s | Just v  = Left $ ToManyInputs is
-      go (i :: is) (t ** n) s | Nothing = interact (t ** n) i s >>= uncurry (go is)
+    go : List (Input Concrete) -> (t : Task h a) -> IsNormal t => State h -> Either NotApplicable (a, State h)
+    go is t s with (value t (get s))
+      go []        t s | Just v  = Right (v, s)
+      go []        t s | Nothing = Left $ ToFewInputs
+      go is        t s | Just v  = Left $ ToManyInputs is
+      go (i :: is) t s | Nothing = do
+        ((t' ** n'), s') <- interact t i s
+        go is t' s'
