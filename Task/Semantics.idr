@@ -25,6 +25,7 @@ data NotApplicable
 
 ---- State ---------------------------------------------------------------------
 
+export
 State : Shape -> Type
 State h = (Stream Nat, Heap h)
 
