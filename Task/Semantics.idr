@@ -20,6 +20,7 @@ data NotApplicable
   | CouldNotContinue
   | CouldNotHandle (Input Concrete)
   | CouldNotHandleValue Concrete
+  | ToFewInputs
 
 ---- State ---------------------------------------------------------------------
 
@@ -209,10 +210,16 @@ interact n i s = case handle n i s of
   Left e => Left e
   Right (t', s', d') => Right (fixate t' s' d')
 
-{-
 ---- Execution -----------------------------------------------------------------
 
-execute : Task h a -> State h -> List (Input Concrete) -> (a, State h)
+execute : Task h a -> State h -> List (Input Concrete) -> Either NotApplicable (a, State h)
 execute t s is =
   let (n', s') = initialise t s in
--}
+  go is n' s'
+  where
+    go : List (Input Concrete) -> Refined (Task h a) IsNormal -> State h -> Either NotApplicable (a, State h)
+    go is (t ** n) s = case value t (get s) of
+        Just v => Right (v, s)
+        Nothing => case is of
+          i :: is => interact (t ** n) i s >>= uncurry (go is)
+          [] => Left ToFewInputs
