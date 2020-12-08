@@ -34,11 +34,11 @@ lose : Refined a f -> a
 lose (v ** _) = v
 
 public export
-implicate : (Refined a f -> b) -> (x : a) -> {auto p : f x} -> b
+implicate : (Refined a f -> b) -> ((x : a) -> {auto p : f x} -> b)
 implicate g x = g (refine x)
 
 public export
-unimplicate : ((x : a) -> {auto p : f x} -> b) -> Refined a f -> b
+unimplicate : ((x : a) -> {auto p : f x} -> b) -> (Refined a f -> b)
 unimplicate g (x ** p) = g x
 
 ---- Equality of type constructors ---------------------------------------------
