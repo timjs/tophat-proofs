@@ -195,6 +195,7 @@ handle (Fail) i _ = Left $ CouldNotHandle i
 
 ---- Fixation ------------------------------------------------------------------
 
+public export
 fixate : Task h a -> State h -> Delta h -> (Refined (Task h a) IsNormal, State h)
 fixate t s d =
   let ((t' ** n'), s', d') = normalise t s in
@@ -204,11 +205,13 @@ fixate t s d =
 
 ---- Initialisation ------------------------------------------------------------
 
+public export
 initialise : Task h a -> State h -> (Refined (Task h a) IsNormal, State h)
 initialise t s = fixate t s []
 
 ---- Interaction ---------------------------------------------------------------
 
+public export
 interact : (t : Task h a) -> IsNormal t => Input Concrete -> State h -> Either NotApplicable (Refined (Task h a) IsNormal, State h)
 interact n i s = case handle n i s of
   Left e => Left e
@@ -216,6 +219,7 @@ interact n i s = case handle n i s of
 
 ---- Execution -----------------------------------------------------------------
 
+public export
 execute : Task h a -> State h -> List (Input Concrete) -> Either NotApplicable (a, State h)
 execute t s is =
   let ((t' ** n'), s') = initialise t s in
