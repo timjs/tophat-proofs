@@ -84,6 +84,6 @@ end x = Concrete x !! Concrete True
 ||| Simplifying path:   remove tautologies
 ||| Simplifying routes: remove route with unsat path
 ifThenElse : Route Bool -> Route a -> Route a -> List (Route a)
-ifThenElse (Concrete True  !! p1) (v2 !! p2) _          = [v2 !! p1 ++ p2]
-ifThenElse (Concrete False !! p1) _          (v3 !! p3) = [v3 !! p1 ++ p3]
+ifThenElse (Concrete True  !! p1) (v2 !! p2) _          = [ v2 !! p1 ++ p2 ]
+ifThenElse (Concrete False !! p1) _          (v3 !! p3) = [ v3 !! p1 ++ p3 ]
 ifThenElse (b1 !! p1)             (v2 !! p2) (v3 !! p3) = [ v2 !! p1 ++ p2 ++ b1, v3 !! p1 ++ p3 ++ Not b1 ]

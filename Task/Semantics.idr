@@ -2,6 +2,7 @@ module Task.Semantics
 
 import Helpers
 import Data.List
+import Data.Symbolic
 import Task.Syntax
 import Task.Observations
 
