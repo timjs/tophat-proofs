@@ -19,6 +19,37 @@ public export
 (?=) : DecEq t => (x : t) -> (y : t) -> Dec (x = y)
 (?=) = decEq
 
+---- Refinements ---------------------------------------------------------------
+
+public export
+Refined : (a : Type) -> (f : a -> Type) -> Type
+Refined = DPair
+
+public export
+refine : (x : a) -> {auto p : f x} -> Refined a f
+refine x {p} = (x ** p)
+
+public export
+lose : Refined a f -> a
+lose (v ** _) = v
+
+public export
+implicate : (Refined a f -> b) -> ((x : a) -> {auto p : f x} -> b)
+implicate g x = g (refine x)
+
+public export
+unimplicate : ((x : a) -> {auto p : f x} -> b) -> (Refined a f -> b)
+unimplicate g (x ** p) = g x
+
+---- Equality of type constructors ---------------------------------------------
+
+public export
+interface Eq1 f where
+  -- (===) : Eq a => f a -> f a -> Bool
+  eq1 : Eq a => f a -> f a -> Bool
+
+-- infix 4 ===
+
 ---- Logic ---------------------------------------------------------------------
 
 infixr 6 /\
@@ -91,12 +122,6 @@ infixr 0 ~>
 public export
 (~>) : a -> b -> (a, b)
 (~>) x y = (x, y)
-
----- Existentials --------------------------------------------------------------
-
-public export
-Some : (Type -> Type) -> Type
-Some f = (a : Type ** f a)
 
 ---- IsItTrue or IsItFalse -----------------------------------------------------
 

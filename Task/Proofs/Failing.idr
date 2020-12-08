@@ -1,4 +1,4 @@
-module Task.Proofs.Interaction
+module Task.Proofs.Failing
 
 import Helpers
 import Data.Maybe
@@ -13,7 +13,7 @@ import Task.Proofs.Lemmas
 ---- Interaction ---------------------------------------------------------------
 
 export
-failingMeansNoInteraction : (t : Task h b) -> IsNormal t => (s : State h) -> IsTrue (failing t) -> IsNothing (value t s) /\ IsNil (inputs t s)
+failingMeansNoInteraction : (t : Task h b) -> IsNormal t => (s : Heap h) -> IsTrue (failing t) -> IsNothing (value t s) /\ IsNil (inputs t s)
 failingMeansNoInteraction (Edit (Named n) (Enter))     @{EditIsNormal}         s Refl impossible
 failingMeansNoInteraction (Edit (Named n) (Update _))  @{EditIsNormal}         s Refl impossible
 failingMeansNoInteraction (Edit (Named n) (View _))    @{EditIsNormal}         s Refl impossible
