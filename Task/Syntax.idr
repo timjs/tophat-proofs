@@ -2,6 +2,7 @@ module Task.Syntax
 
 import Helpers
 import public Data.Basic
+import public Data.Symbolic
 import public Data.Heap
 
 %default total
@@ -49,19 +50,19 @@ mutual
     ---- Editors
     Edit   : (n : Name) -> (e : Editor h a) -> Task h a
     ---- Parallels
-    Pair   : (t1 : Task h a) -> (t2 : Task h b) -> Task h (a, b)
-    Done   : (v : a) -> Task h a
-    Choose : (t1 : Task h a) -> (t2 : Task h a) -> Task h a
+    Pair   : (t1 : Task h (Symbolic a)) -> (t2 : Task h (Symbolic b)) -> Task h (Symbolic a, Symbolic b)
+    Done   : (v : Symbolic a) -> Task h (Symbolic a)
+    Choose : (t1 : Task h (Symbolic a)) -> (t2 : Task h (Symbolic a)) -> Task h (Symbolic a)
     Fail   : Task h a
     ---- Steps
-    Trans  : (f : a' -> a) -> (t2 : Task h a') -> Task h a
-    Step   : (t1 : Task h a') -> (c : a' -> Task h a) -> Task h a
+    Trans  : (f : Symbolic a' -> Symbolic a) -> (t2 : Task h (Symbolic a')) -> Task h (Symbolic a)
+    Step   : (t1 : Task h (Symbolic a')) -> (c : Symbolic a' -> Task h (Symbolic a)) -> Task h (Symbolic a)
     ---- Asserts
-    Assert : (p : Bool) -> Task h Bool
-    Repeat : (t1 : Task h a) -> Task h a
+    Assert : (p : Symbolic Bool) -> Task h (Symbolic Bool)
+    Repeat : (t1 : Task h (Symbolic a)) -> Task h (Symbolic a)
     ---- Stores
     -- Share : {auto ok : IsBasic a} -> a -> Task h (Ref h a)
-    Assign : {a : Type} -> {auto ok : IsBasic a} -> (v : a) -> (r : Ref h a) -> Task h ()
+    Assign : {a : Type} -> {auto ok : IsBasic a} -> (v : Symbolic a) -> (r : Ref h (Symbolic a)) -> Task h (Symbolic ())
 
   public export
   data Editor : (h : Shape) -> (a : Type) -> Type where
@@ -84,38 +85,34 @@ data IsNormal : Task h a -> Type where
   TransIsNormal  : IsNormal t2 -> IsNormal (Trans f t2)
   StepIsNormal   : IsNormal t1 -> IsNormal (Step t1 c)
 
-public export
-Delta : Shape -> Type
-Delta h = List (Some (Ref h))
-
 ---- Inputs & Options ----------------------------------------------------------
 
----- Concrete inputs
+---- Real inputs
 
 public export
-data Concrete : Type where
-  Value : {a' : Type} -> {auto ok' : IsBasic a'} -> (v : a') -> Concrete
+data Real : Type where
+  Value : {a' : Type} -> {auto ok' : IsBasic a'} -> (v : a') -> Real
 
----- Symbolic inputs
-
-public export
-data Symbolic : Type where
-  Symbol : (a' : Type) -> {auto ok' : IsBasic a'} -> Symbolic
+---- Dummy inputs
 
 public export
-Eq Symbolic where
-  (==) (Symbol a {ok'=ok_a}) (Symbol b {ok'=ok_b}) with (decBasic ok_a ok_b)
-    (==) (Symbol a {ok'=ok_a}) (Symbol a {ok'=ok_a}) | Yes Refl = True
-    (==) (Symbol a {ok'=ok_a}) (Symbol b {ok'=ok_b}) | No _ = False
+data Dummy : Type where
+  Placeholder : (a' : Type) -> {auto ok' : IsBasic a'} -> Dummy
 
-symbolInjective : {auto ok_a : IsBasic a} -> {auto ok_b : IsBasic b} -> (Symbol a = Symbol b) -> (ok_a = ok_b)
+public export
+Eq Dummy where
+  (==) (Placeholder a {ok'=ok_a}) (Placeholder b {ok'=ok_b}) with (decBasic ok_a ok_b)
+    (==) (Placeholder a {ok'=ok_a}) (Placeholder a {ok'=ok_a}) | Yes Refl = True
+    (==) (Placeholder a {ok'=ok_a}) (Placeholder b {ok'=ok_b}) | No _ = False
+
+symbolInjective : {auto ok_a : IsBasic a} -> {auto ok_b : IsBasic b} -> (Placeholder a = Placeholder b) -> (ok_a = ok_b)
 symbolInjective {ok_a=ok} {ok_b=ok} Refl = Refl
 
 public export
-DecEq Symbolic where
-  decEq (Symbol a {ok'=ok_a}) (Symbol b {ok'=ok_b}) with (decBasic ok_a ok_b)
-    decEq (Symbol a {ok'=ok_a}) (Symbol a {ok'=ok_a}) | Yes Refl = Yes Refl
-    decEq (Symbol a {ok'=ok_a}) (Symbol b {ok'=ok_b}) | No cntr = No (cntr . symbolInjective)
+DecEq Dummy where
+  decEq (Placeholder a {ok'=ok_a}) (Placeholder b {ok'=ok_b}) with (decBasic ok_a ok_b)
+    decEq (Placeholder a {ok'=ok_a}) (Placeholder a {ok'=ok_a}) | Yes Refl = Yes Refl
+    decEq (Placeholder a {ok'=ok_a}) (Placeholder b {ok'=ok_b}) | No cntr = No (cntr . symbolInjective)
 
 ---- Inputs
 
@@ -152,6 +149,6 @@ DecEq v => DecEq (Input v) where
   decEq _            _              = ?action_decEq_rest
 
 public export
-dummify : Input Concrete -> Input Symbolic
-dummify (Insert k (Value {a'} _)) = Insert k (Symbol a')
+dummify : Input Real -> Input Dummy
+dummify (Insert k (Value {a'} _)) = Insert k (Placeholder a')
 dummify (Option n l)              = Option n l
