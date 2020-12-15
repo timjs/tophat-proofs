@@ -1,6 +1,7 @@
 module Data.Basic
 
 import Helpers
+import Data.Symbolic
 
 %default total
 
@@ -12,6 +13,7 @@ data IsBasic : Type -> Type where
   IntIsBasic    : IsBasic Int
   StringIsBasic : IsBasic String
   UnitIsBasic   : IsBasic ()
+  SymbolIsBasic : IsBasic a -> IsBasic (Symbolic a)
   PairIsBasic   : IsBasic a -> IsBasic b -> IsBasic (a, b)
 
 ---- Lemmas --------------------------------------------------------------------
@@ -25,6 +27,9 @@ uninhBoolString Refl impossible
 uninhBoolUnit : Not (BoolIsBasic = UnitIsBasic)
 uninhBoolUnit Refl impossible
 
+uninhBoolSymbol : Not (BoolIsBasic = SymbolIsBasic _)
+uninhBoolSymbol Refl impossible
+
 uninhBoolPair : Not (BoolIsBasic = PairIsBasic _ _)
 uninhBoolPair Refl impossible
 
@@ -34,17 +39,29 @@ uninhIntString Refl impossible
 uninhIntUnit : Not (IntIsBasic = UnitIsBasic)
 uninhIntUnit Refl impossible
 
+uninhIntSymbol : Not (IntIsBasic = SymbolIsBasic _)
+uninhIntSymbol Refl impossible
+
 uninhIntPair : Not (IntIsBasic = PairIsBasic _ _)
 uninhIntPair Refl impossible
 
 uninhStringUnit : Not (StringIsBasic = UnitIsBasic)
 uninhStringUnit Refl impossible
 
+uninhStringSymbol : Not (StringIsBasic = SymbolIsBasic _)
+uninhStringSymbol Refl impossible
+
 uninhStringPair : Not (StringIsBasic = PairIsBasic _ _)
 uninhStringPair Refl impossible
 
+uninhUnitSymbol : Not (UnitIsBasic = SymbolIsBasic _)
+uninhUnitSymbol Refl impossible
+
 uninhUnitPair : Not (UnitIsBasic = PairIsBasic _ _)
 uninhUnitPair Refl impossible
+
+uninhSymbolPair : Not (SymbolIsBasic _ = PairIsBasic _ _)
+uninhSymbolPair Refl impossible
 
 basicInjective : (IsBasic a = IsBasic b) -> (a = b)
 basicInjective Refl = Refl
@@ -74,31 +91,44 @@ decBasic BoolIsBasic         BoolIsBasic         = Yes Refl
 decBasic BoolIsBasic         IntIsBasic          = No uninhBoolInt
 decBasic BoolIsBasic         StringIsBasic       = No uninhBoolString
 decBasic BoolIsBasic         UnitIsBasic         = No uninhBoolUnit
+decBasic BoolIsBasic         (SymbolIsBasic s2)  = No uninhBoolSymbol
 decBasic BoolIsBasic         (PairIsBasic x2 y2) = No uninhBoolPair
 decBasic IntIsBasic          BoolIsBasic         = No (negEqSymBasic uninhBoolInt)
 decBasic IntIsBasic          IntIsBasic          = Yes Refl
 decBasic IntIsBasic          StringIsBasic       = No uninhIntString
 decBasic IntIsBasic          UnitIsBasic         = No uninhIntUnit
+decBasic IntIsBasic          (SymbolIsBasic s2)  = No uninhIntSymbol
 decBasic IntIsBasic          (PairIsBasic x2 y2) = No uninhIntPair
 decBasic StringIsBasic       BoolIsBasic         = No (negEqSymBasic uninhBoolString)
 decBasic StringIsBasic       IntIsBasic          = No (negEqSymBasic uninhIntString)
 decBasic StringIsBasic       StringIsBasic       = Yes Refl
 decBasic StringIsBasic       UnitIsBasic         = No uninhStringUnit
+decBasic StringIsBasic       (SymbolIsBasic s2)  = No uninhStringSymbol
 decBasic StringIsBasic       (PairIsBasic x2 y2) = No uninhStringPair
 decBasic UnitIsBasic         BoolIsBasic         = No (negEqSymBasic uninhBoolUnit)
 decBasic UnitIsBasic         IntIsBasic          = No (negEqSymBasic uninhIntUnit)
 decBasic UnitIsBasic         StringIsBasic       = No (negEqSymBasic uninhStringUnit)
 decBasic UnitIsBasic         UnitIsBasic         = Yes Refl
+decBasic UnitIsBasic         (SymbolIsBasic s2)  = No uninhUnitSymbol
 decBasic UnitIsBasic         (PairIsBasic x1 y2) = No uninhUnitPair
+decBasic (SymbolIsBasic s1)  BoolIsBasic         = No (negEqSymBasic uninhBoolSymbol)
+decBasic (SymbolIsBasic s1)  IntIsBasic          = No (negEqSymBasic uninhIntSymbol)
+decBasic (SymbolIsBasic s1)  StringIsBasic       = No (negEqSymBasic uninhStringSymbol)
+decBasic (SymbolIsBasic s1)  UnitIsBasic         = No (negEqSymBasic uninhUnitSymbol)
+decBasic (SymbolIsBasic s1)  (SymbolIsBasic s2)  with (decBasic s1 s2)
+  decBasic (SymbolIsBasic s1)  (SymbolIsBasic s1)  | Yes Refl = Yes Refl
+  decBasic (SymbolIsBasic s1)  (SymbolIsBasic s2)  | No cntr = No ?decBasicSymbolNop
+decBasic (SymbolIsBasic s1)  (PairIsBasic x1 y2) = No uninhSymbolPair
 decBasic (PairIsBasic x1 y1) BoolIsBasic         = No (negEqSymBasic uninhBoolPair)
 decBasic (PairIsBasic x1 y1) IntIsBasic          = No (negEqSymBasic uninhIntPair)
 decBasic (PairIsBasic x1 y1) StringIsBasic       = No (negEqSymBasic uninhStringPair)
 decBasic (PairIsBasic x1 y1) UnitIsBasic         = No (negEqSymBasic uninhUnitPair)
+decBasic (PairIsBasic x1 y1) (SymbolIsBasic s2)  = No (negEqSymBasic uninhSymbolPair)
 decBasic (PairIsBasic x1 y1) (PairIsBasic x2 y2) with (decBasic x1 x2, decBasic y1 y2)
   decBasic (PairIsBasic x1 y1) (PairIsBasic x1 y1) | (Yes Refl, Yes Refl) = Yes Refl
   decBasic (PairIsBasic x1 y1) (PairIsBasic x2 y1) | (No cntr1, Yes Refl) = No ?decBasicPairNopYes
   decBasic (PairIsBasic x1 y1) (PairIsBasic x1 y2) | (Yes Refl, No cntr2) = No ?decBasicPairYesNop
-  decBasic (PairIsBasic x1 y1) (PairIsBasic x2 y2) | (No cntrq, No cntr2) = No ?decBasicPairNopNop
+  decBasic (PairIsBasic x1 y1) (PairIsBasic x2 y2) | (No cntr1, No cntr2) = No ?decBasicPairNopNop
 
 export
 neqBasic : Not (IsBasic a = IsBasic b) -> Not (a = b)
