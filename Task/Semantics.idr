@@ -4,9 +4,10 @@ import Helpers
 import Data.List
 import Data.Symbolic
 import Task.Syntax
+import Task.State
 import Task.Observations
 
-%default total
+-- %default total
 
 ---- Errors --------------------------------------------------------------------
 
@@ -19,94 +20,79 @@ data NotApplicable
   | CouldNotFind Label
   | CouldNotPick
   | CouldNotContinue
-  | CouldNotHandle (Input Concrete)
-  | CouldNotHandleValue Concrete
+  | CouldNotHandle (Input Real)
+  | CouldNotHandleValue Real
   | ToFewInputs
-  | ToManyInputs (List (Input Concrete))
-
----- State ---------------------------------------------------------------------
-
-export
-State : Shape -> Type
-State h = (Stream Nat, Heap h)
-
-export
-get : State h -> Heap h
-get = snd
-
-modify : (Heap h -> Heap h) -> State h -> State h
-modify f (ns, s) = (ns, f s)
-
-fresh : State h -> (Nat, State h)
-fresh (n :: ns, s) = (n, (ns, s))
+  | ToManyInputs (List (Input Real))
 
 ---- Normalisation -------------------------------------------------------------
 
 public export
-normalise : Task h a -> State h -> (Refined (Task h a) IsNormal, State h, Delta h)
+normalise : Simulation (Task h a) -> State h -> List (Simulation (Refined (Task h a) IsNormal), State h, Delta h)
 ---- Step
-normalise (Step t1 e2) s =
-  let ((t1' ** n1'), s', d') = normalise t1 s
-      stay = (Step t1' e2 ** StepIsNormal n1')
-   in case value t1' (get s') of
-    Nothing => (stay, s', d') -- N-StepNone
-    Just v1 =>
+normalise (Step t1 e2 !! p) s = do
+  ((t1' ** n1') !! p', s', d') <- normalise (t1 !! p) s
+  let stay = (Step t1' e2 ** StepIsNormal n1') !! p'
+  case value t1' (get s') of
+    Nothing => done (stay, s', d') -- N-StepNone
+    Just v1 => do
       let t2 = e2 v1
-       in if failing t2
-        then (stay, s', d') -- N-StepFail
+      if failing t2
+        then done (stay, s', d') -- N-StepFail
         else if not $ isNil $ options t2
-          then (stay, s', d') -- N-StepWait
+          then done (stay, s', d') -- N-StepWait
           --> Note that Idris2 can't prove termination when writing `t2` instead of `e2 v1`, see #493
-          else
-            let (n2', s'', d'') = normalise (e2 v1) s'
-             in (n2', s'', d' ++ d'') -- N-StepCont
+          else do
+            (n2', s'', d'') <- normalise (e2 v1 !! p') s'
+            done (n2', s'', d' ++ d'') -- N-StepCont
 ---- Choose
-normalise (Choose t1 t2) s =
-  let ((t1' ** n1'), s', d') = normalise t1 s
-   in case value t1' (get s') of
-    Just _ => ((t1' ** n1'), s', d') -- N-ChooseLeft
-    Nothing =>
-      let ((t2' ** n2'), s'', d'') = normalise t2 s'
-       in case value t2' (get s'') of
-        Just _ => ((t2' ** n2'), s'', d' ++ d'') -- N-ChooseRight
-        Nothing => ((Choose t1' t2' ** ChooseIsNormal n1' n2'), s'', d' ++ d'') -- N-ChooseNone
+normalise (Choose t1 t2 !! p) s = do
+  ((t1' ** n1') !! p', s', d') <- normalise (t1 !! p) s
+  case value t1' (get s') of
+    Just _  => done ((t1' ** n1') !! p', s', d') -- N-ChooseLeft
+    Nothing => do
+      ((t2' ** n2') !! p'', s'', d'') <- normalise (t2 !! p') s'
+      case value t2' (get s'') of
+        Just _  => done ((t2' ** n2') !! p'', s'', d' ++ d'') -- N-ChooseRight
+        Nothing => done ((Choose t1' t2' ** ChooseIsNormal n1' n2') !! p'', s'', d' ++ d'') -- N-ChooseNone
 ---- Converge
-normalise (Trans f t2) s =
-  let ((t2' ** n2'), s', d') = normalise t2 s
-   in ((Trans f t2' ** TransIsNormal n2'), s', d') -- N-Trans
-normalise (Pair t1 t2) s =
-  let ((t1' ** n1'), s', d')  = normalise t1 s
-      ((t2' ** n2'), s'', d'') = normalise t2 s'
-   in ((Pair t1' t2' ** PairIsNormal n1' n2'), s'', d' ++ d'') -- N-Pair
+normalise (Trans f t2 !! p) s = do
+  ((t2' ** n2') !! p', s', d') <- normalise (t2 !! p) s
+  done ((Trans f t2' ** TransIsNormal n2') !! p', s', d') -- N-Trans
+normalise (Pair t1 t2 !! p) s = do
+  ((t1' ** n1') !! p' , s' , d' ) <- normalise (t1 !! p ) s
+  ((t2' ** n2') !! p'', s'', d'') <- normalise (t2 !! p') s'
+  done ((Pair t1' t2' ** PairIsNormal n1' n2') !! p'', s'', d' ++ d'') -- N-Pair
 ---- Ready
-normalise (Done x) s =
-  ((Done x ** DoneIsNormal), s, []) -- N-Done
-normalise (Fail) s =
-  ((Fail ** FailIsNormal), s, []) -- N-Fail
+normalise (Done x !! p) s =
+  done ((Done x ** DoneIsNormal) !! p, s, []) -- N-Done
+normalise (Fail !! p) s =
+  done ((Fail ** FailIsNormal) !! p, s, []) -- N-Fail
 ---- Name
-normalise (Edit Unnamed e) s =
+normalise (Edit Unnamed e !! p) s = do
   let (k, s') = fresh s
-   in ((Edit (Named k) e ** EditIsNormal), s', []) -- N-Name
-normalise (Edit (Named k) e) s
-  = ((Edit (Named k) e ** EditIsNormal), s, []) -- N-Editor
+  done ((Edit (Named k) e ** EditIsNormal) !! p, s', []) -- N-Name
+normalise (Edit (Named k) e !! p) s = do
+  done ((Edit (Named k) e ** EditIsNormal) !! p, s, []) -- N-Editor
 ---- Resolve
-normalise (Repeat t1) s =
-  let ((t1' ** n1'), s', d') = normalise t1 s
-   in ((Step t1' (\x => Edit Unnamed (Select ["Repeat" ~> Repeat t1, "Exit" ~> Done x])) ** StepIsNormal n1'), s', d') -- N-Repeat
-  -- normalise (Step t1 (\x => Edit Unnamed (Select ["Repeat" ~> Repeat t1, "Exit" ~> Done x]))) s <-- Should be equivallent
-normalise (Assert p) s =
-  ((Done p ** DoneIsNormal), s, []) -- N-Assert
--- normalise (Share b) s =
+normalise (Repeat t1 !! p) s = do
+  ((t1' ** n1') !! p', s', d') <- normalise (t1 !! p) s
+  done ((Step t1' (\x => Edit Unnamed (Select ["Repeat" ~> Repeat t1, "Exit" ~> Done x])) ** StepIsNormal n1') !! p', s', d') -- N-Repeat
+  -- normalise (Step t1 (\x => Edit Unnamed (Select ["Repeat" ~> Repeat t1, "Exit" ~> Done x])) !! p') s <-- Should be equivallent
+normalise (Assert b !! p) s =
+  done ((Done b ** DoneIsNormal) !! p ++ ?h, s, []) -- N-Assert
+-- normalise (Share b !! p) s = do
 --   let (l, s') = modify (alloc b) s
---    in ((Done l ** DoneIsNormal), s')
-normalise (Assign b l) s =
+--   done ((Done l ** DoneIsNormal) !! p, s')
+normalise (Assign b l !! p) s = do
   let s' = modify (write b l) s
-   in ((Done () ** DoneIsNormal), s', [some l])
+  done ((Done (Concrete ()) ** DoneIsNormal) !! p, s', [some l])
+normalise _ _ = ?rest
 
----- Handling ------------------------------------------------------------------
+{--- Handling ------------------------------------------------------------------
 
 public export
-insert : Editor h a -> Concrete -> State h -> Either NotApplicable (Editor h a, State h, Delta h)
+insert : Editor h a -> Concrete -> State h -> List (Either NotApplicable (Editor h a, State h, Delta h))
 insert (Enter {a} {ok}) (Value {a'} {ok'} v') s with (decBasic ok ok')
   insert (Enter {a} {ok}) (Value {a'=a } {ok'=ok } v') s | Yes Refl = Right (Update v', s, [])
   insert (Enter {a} {ok}) (Value {a'=a'} {ok'=ok'} v') s | No _ = Left $ CouldNotChangeVal a' a
@@ -121,7 +107,7 @@ insert (Watch _) c _ = Left $ CouldNotHandleValue c
 insert (Select _) c _ = Left $ CouldNotHandleValue c
 
 public export
-pick : Task h a -> Label -> Either NotApplicable (Task h a)
+pick : Task h a -> Label -> List (Either NotApplicable (Task h a))
 pick t@(Edit n (Select ts)) l =
   case lookup l ts of
     Just t' => do
@@ -140,7 +126,7 @@ pick (Step t1 e2) l =
 pick _ _ = Left $ CouldNotPick
 
 public export
-handle : (t : Task h a) -> IsNormal t => Input Concrete -> State h -> Either NotApplicable (Task h a, State h, Delta h)
+handle : (t : Task h a) -> IsNormal t => Input Concrete -> State h -> List (Either NotApplicable (Task h a, State h, Delta h))
 ---- Unnamed
 handle (Edit Unnamed e) i s =
   Left $ CouldNotHandle i
@@ -196,7 +182,7 @@ handle (Fail) i _ = Left $ CouldNotHandle i
 ---- Fixation ------------------------------------------------------------------
 
 public export
-fixate : Task h a -> State h -> Delta h -> (Refined (Task h a) IsNormal, State h)
+fixate : Task h a -> State h -> Delta h -> List (Refined (Task h a) IsNormal, State h)
 fixate t s d =
   let ((t' ** n'), s', d') = normalise t s in
     if intersect (d ++ d') (watching t') == []
@@ -206,13 +192,13 @@ fixate t s d =
 ---- Initialisation ------------------------------------------------------------
 
 public export
-initialise : Task h a -> State h -> (Refined (Task h a) IsNormal, State h)
+initialise : Task h a -> State h -> List (Refined (Task h a) IsNormal, State h)
 initialise t s = fixate t s []
 
 ---- Interaction ---------------------------------------------------------------
 
 public export
-interact : (t : Task h a) -> IsNormal t => Input Concrete -> State h -> Either NotApplicable (Refined (Task h a) IsNormal, State h)
+interact : (t : Task h a) -> IsNormal t => Input Concrete -> State h -> List (Either NotApplicable (Refined (Task h a) IsNormal, State h))
 interact n i s = case handle n i s of
   Left e => Left e
   Right (t', s', d') => Right (fixate t' s' d')
@@ -220,12 +206,12 @@ interact n i s = case handle n i s of
 ---- Execution -----------------------------------------------------------------
 
 public export
-execute : Task h a -> State h -> List (Input Concrete) -> Either NotApplicable (a, State h)
+execute : Task h a -> State h -> List Input -> List (Either NotApplicable (a, State h))
 execute t s is =
   let ((t' ** n'), s') = initialise t s in
   go is t' s'
   where
-    go : List (Input Concrete) -> (t : Task h a) -> IsNormal t => State h -> Either NotApplicable (a, State h)
+    go : List Input -> (t : Task h a) -> IsNormal t => State h -> List (Either NotApplicable (a, State h))
     go is t s with (value t (get s))
       go []        t s | Just v  = Right (v, s)
       go []        t s | Nothing = Left $ ToFewInputs
@@ -233,3 +219,5 @@ execute t s is =
       go (i :: is) t s | Nothing = do
         ((t' ** n'), s') <- interact t i s
         go is t' s'
+
+-}
