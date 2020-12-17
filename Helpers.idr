@@ -123,6 +123,10 @@ public export
 (~>) : a -> b -> (a, b)
 (~>) x y = (x, y)
 
+public export
+done : Monad m => a -> m a
+done = pure
+
 ---- IsItTrue or IsItFalse -----------------------------------------------------
 
 public export
