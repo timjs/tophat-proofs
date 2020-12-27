@@ -140,20 +140,22 @@ export
 
 ---- Existentials --------------------------------------------------------------
 
-public export
-Some : (Type -> Type) -> Type
-Some f = (a : Type ** (IsBasic a, f a))
+export
+data Some : (Type -> Type) -> Type where
+  Pack : (a : Type) -> IsBasic a -> f a -> Some f
+-- Some : (Type -> Type) -> Type
+-- Some f = (a : Type ** (IsBasic a, f a))
 
 public export
 some : {a : Type} -> {auto ok : IsBasic a} -> f a -> Some f
-some {a} {ok} v = (a ** (ok, v))
+some {a} {ok} v = Pack a ok v
 
 export
 implementation Eq1 f => Eq (Some f) where
-  (==) (a1 ** (b1, v1)) (a2 ** (b2, v2)) with (decBasic b1 b2) --(a1 ?: a2)
-    (==) (Bool   ** (BoolIsBasic  , v1)) (Bool   ** (BoolIsBasic  , v2)) | Yes Refl = eq1 v1 v2
-    -- (==) (Int    ** (IntIsBasic   , v1)) (Int    ** (IntIsBasic   , v2)) | Yes Refl = eq1 v1 v2
-    -- (==) (Int ** (IntIsBasic, v1)) (Int ** (IntIsBasic, v2)) | Yes Refl = eq1 v1 v2
-    -- (==) (()     ** (UnitIsBasic  , v1)) (()     ** (UnitIsBasic  , v2)) | Yes Refl = eq1 v1 v2
-    (==) (a1     ** (b1           , v1)) (a1     ** (b1           , v2)) | Yes Refl = ?eq_some_f_same_a
-    (==) (a1 ** (b1, v1)) (a2 ** (b2, e2)) | No contr = False
+  (==) (Pack a1 b1 v1) (Pack a2 b2 v2) with (decBasic b1 b2) --(a1 ?: a2)
+    (==) (Pack Bool BoolIsBasic v1) (Pack Bool BoolIsBasic v2) | Yes Refl = eq1 v1 v2
+    -- (==) (Pack Int    IntIsBasic    v1) (Pack Int    IntIsBasic    v2) | Yes Refl = eq1 v1 v2
+    -- (==) (Pack Int IntIsBasic v1) (Pack Int IntIsBasic v2) | Yes Refl = eq1 v1 v2
+    -- (==) ((Pack )     UnitIsBasic   v1) ((Pack )     UnitIsBasic   v2) | Yes Refl = eq1 v1 v2
+    (==) (Pack a1 b1 v1) (Pack a1 b1 v2) | Yes Refl = ?eq_some_f_same_a
+    (==) (Pack a1 b1 v1) (Pack a2 b2 e2) | No contr = False
