@@ -11,12 +11,20 @@ import Data.Basic
 ||| Heap shape
 public export
 data Shape
-  = ||| Single integer
+  = ||| Nothing
+    None
+  | ||| Single integer
     Single
+
+Uninhabited (None = Single) where
+  uninhabited Refl impossible
 
 export
 DecEq Shape where
+  decEq (None)   (None)   = Yes Refl
+  decEq (None)   (Single) = No absurd
   decEq (Single) (Single) = Yes Refl
+  decEq (Single) (None)   = No (negEqSym absurd)
 
 ||| References into the heap
 public export
@@ -29,8 +37,10 @@ implementation Eq1 (Ref h) where
   eq1 Loc Loc = True
 
 ||| Concrete heap of certain shape
-export
+public export
 data Heap : Shape -> Type where
+  ||| Empty heap
+  Empty : Heap None
   ||| Value of single integer
   Saved : Int -> Heap Single
 

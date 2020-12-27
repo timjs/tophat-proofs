@@ -1,5 +1,6 @@
 module Task.State
 
+import Data.Stream
 import public Data.Basic
 import public Data.Heap
 
@@ -8,6 +9,10 @@ import public Data.Heap
 export
 State : Shape -> Type
 State h = (Stream Nat, Heap h)
+
+export
+empty : State None
+empty = (iterate S 0, Empty)
 
 export
 get : State h -> Heap h
