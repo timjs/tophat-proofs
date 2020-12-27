@@ -53,6 +53,7 @@ mutual
     Pair   : (t1 : Task h (Symbolic a)) -> (t2 : Task h (Symbolic b)) -> Task h (Symbolic a, Symbolic b) --<<
     Done   : (v : Symbolic a) -> Task h (Symbolic a)
     Choose : (t1 : Task h (Symbolic a)) -> (t2 : Task h (Symbolic a)) -> Task h (Symbolic a)
+    Test   : Symbolic Bool -> Task h (Symbolic a) -> Task h (Symbolic a) -> Task h (Symbolic a)
     Fail   : Task h a
     ---- Steps
     Trans  : (f : Symbolic a' -> Symbolic a) -> (t2 : Task h (Symbolic a')) -> Task h (Symbolic a) --<< f : Symbolic a' -> Simulation (Symbolic a)
@@ -84,6 +85,11 @@ data IsNormal : Task h a -> Type where
   FailIsNormal   : IsNormal Fail
   TransIsNormal  : IsNormal t2 -> IsNormal (Trans f t2)
   StepIsNormal   : IsNormal t1 -> IsNormal (Step t1 c)
+
+public export
+Guard : List (Symbolic Bool, Task h (Symbolic a)) -> Task h (Symbolic a)
+Guard [] = Fail
+Guard ((p, t) :: bs) = Test p t (Guard bs)
 
 ---- Inputs & Options ----------------------------------------------------------
 

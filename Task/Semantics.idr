@@ -56,6 +56,15 @@ normalise (Choose t1 t2 !! p) s = do
       case value t2' (get s'') of
         Just _  => done ((t2' ** n2') !! p'', s'', d' ++ d'') -- N-ChooseRight
         Nothing => done ((Choose t1' t2' ** ChooseIsNormal n1' n2') !! p'', s'', d' ++ d'') -- N-ChooseNone
+---- Test
+normalise (Test b t1 t2 !! p) s =
+  let fst = do
+        (n1' !! p1', s', d') <- normalise (t1 !! p) s
+        done (n1' !! p1' ++ b, s', d')
+      snd = do
+        (n2' !! p2', s', d') <- normalise (t2 !! p) s
+        done (n2' !! p2' ++ Not b, s', d')
+   in fst <|> snd
 ---- Converge
 normalise (Trans f t2 !! p) s = do
   ((t2' ** n2') !! p', s', d') <- normalise (t2 !! p) s

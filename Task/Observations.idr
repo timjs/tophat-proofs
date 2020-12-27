@@ -58,6 +58,7 @@ mutual
   failing (Done _)       = False
   failing (Choose t1 t2) = failing t1 && failing t2
   failing (Fail)         = True
+  failing (Test b t1 t2) = failing t1 && failing t2
   failing (Step t1 _)    = failing t1
   failing (Assert _)     = False
   failing (Repeat t1)    = failing t1
