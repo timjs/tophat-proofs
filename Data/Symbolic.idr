@@ -63,8 +63,8 @@ data Simulation : Type -> Type where
 infix 0 !!
 
 export
-end : a -> Simulation a
-end x = x !! Value True
+final : a -> Simulation a
+final x = x !! Value True
 
 export
 ||| Simplifying path:   remove tautologies

@@ -1,6 +1,7 @@
 module Task.Semantics
 
 import Helpers
+import Data.Fuel
 import Data.List
 import Data.Symbolic
 import Task.Syntax
@@ -175,28 +176,24 @@ initialise t s = fixate t s []
 ---- Interaction ---------------------------------------------------------------
 
 public export
-interact : Simulation (Refined (Task h a) IsNormal) -> State h -> List (Simulation (Refined (Task h a) IsNormal), Input (Some Token), State h)
-interact n s = do
+drive : Simulation (Refined (Task h a) IsNormal) -> State h -> List (Simulation (Refined (Task h a) IsNormal), Input (Some Token), State h)
+drive n s = do
   (t', i', s', d') <- handle n s
   (n'', s'') <- fixate t' s' d'
   done (n'', i', s'')
 
 ---- Simulation ----------------------------------------------------------------
 
-{-
 public export
-execute : Task h a -> State h -> List (Simulation (Symbolic a), List (Input Dummy), State h)
-execute t s is =
-  let ((t' ** n'), s') = initialise t s in
-  go is t' s'
+simulate : Fuel -> Task h a -> State h -> List (List (Input (Some Token)), Simulation a)
+simulate us t s = do
+  (n', s') <- initialise (final t) s
+  go us n' [] s'
   where
-    go : List Input -> (t : Task h a) -> IsNormal t => State h -> List (Either NotApplicable (a, State h))
-    go is t s with (value t (get s))
-      go []        t s | Just v  = Right (v, s)
-      go []        t s | Nothing = Left $ ToFewInputs
-      go is        t s | Just v  = Left $ ToManyInputs is
-      go (i :: is) t s | Nothing = do
-        ((t' ** n'), s') <- interact t i s
-        go is t' s'
-
--}
+    go : Fuel -> Simulation (Refined (Task h a) IsNormal) -> List (Input (Some Token)) -> State h -> List (List (Input (Some Token)), Simulation a)
+    go us ((t ** n) !! p) is s with (value t (get s))
+      go _          ((t ** n) !! p) is s | Just v  = done (is, v !! p)
+      go Dry        ((t ** n) !! p) is s | Nothing = empty -- $ ToFewFuel
+      go (More us') ((t ** n) !! p) is s | Nothing = do
+        (n' !! p', i', s') <- drive ((t ** n) !! p) s
+        go us' (n' !! p') (i' :: is) s'
