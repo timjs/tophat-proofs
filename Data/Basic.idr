@@ -83,7 +83,7 @@ bothNeq cntr_a cntr_b Refl = cntr_a Refl
 
 ---- Equality ------------------------------------------------------------------
 
-infix 6 ?:
+infix 6 ??=
 
 public export
 decBasic : (b1 : IsBasic a1) -> (b2 : IsBasic a2) -> Dec (b1 = b2)
@@ -135,8 +135,8 @@ neqBasic : Not (IsBasic a = IsBasic b) -> Not (a = b)
 neqBasic f Refl = f Refl
 
 export
-(?:) : a -> {auto p : IsBasic a} -> b -> {auto q : IsBasic b} -> Dec (p = q)
-(?:) _ {p} _ {q} = decBasic p q
+(??=) : a -> {auto p : IsBasic a} -> b -> {auto q : IsBasic b} -> Dec (p = q)
+(??=) _ {p} _ {q} = decBasic p q
 
 ---- Existentials --------------------------------------------------------------
 

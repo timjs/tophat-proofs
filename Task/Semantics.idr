@@ -20,10 +20,10 @@ data NotApplicable
   | CouldNotFind Label
   | CouldNotPick
   | CouldNotContinue
-  | CouldNotHandle (Input Real)
-  | CouldNotHandleValue Real
+  | CouldNotHandle (Input Concrete)
+  | CouldNotHandleValue Concrete
   | ToFewInputs
-  | ToManyInputs (List (Input Real))
+  | ToManyInputs (List (Input Concrete))
 
 ---- Normalisation -------------------------------------------------------------
 
@@ -41,9 +41,9 @@ normalise (Step t1 e2 !! p) s = do
         then done (stay, s', d') -- N-StepFail
         else if not $ isNil $ options t2
           then done (stay, s', d') -- N-StepWait
-          --> Note that Idris2 can't prove termination when writing `t2` instead of `e2 v1`, see #493
+          --NOTE: Idris2 can't prove termination when writing `t2` instead of `e2 v1`, see #493
           else do
-            (n2', s'', d'') <- normalise (e2 v1 !! p') s'
+            (n2', s'', d'') <- normalise (t2 !! p') s'
             done (n2', s'', d' ++ d'') -- N-StepCont
 ---- Choose
 normalise (Choose t1 t2 !! p) s = do
@@ -80,133 +80,112 @@ normalise (Repeat t1 !! p) s = do
   done ((Step t1' (\x => Edit Unnamed (Select ["Repeat" ~> Repeat t1, "Exit" ~> Done x])) ** StepIsNormal n1') !! p', s', d') -- N-Repeat
   -- normalise (Step t1 (\x => Edit Unnamed (Select ["Repeat" ~> Repeat t1, "Exit" ~> Done x])) !! p') s <-- Should be equivallent
 normalise (Assert b !! p) s =
-  done ((Done b ** DoneIsNormal) !! p ++ ?h, s, []) -- N-Assert
+  done ((Done b ** DoneIsNormal) !! p ++ b, s, []) -- N-Assert
 -- normalise (Share b !! p) s = do
 --   let (l, s') = modify (alloc b) s
 --   done ((Done l ** DoneIsNormal) !! p, s')
 normalise (Assign b l !! p) s = do
   let s' = modify (write b l) s
-  done ((Done (Concrete ()) ** DoneIsNormal) !! p, s', [some l])
-normalise _ _ = ?rest
+  done ((Done (Value ()) ** DoneIsNormal) !! p, s', [some l])
 
-{--- Handling ------------------------------------------------------------------
-
-public export
-insert : Editor h a -> Concrete -> State h -> List (Either NotApplicable (Editor h a, State h, Delta h))
-insert (Enter {a} {ok}) (Value {a'} {ok'} v') s with (decBasic ok ok')
-  insert (Enter {a} {ok}) (Value {a'=a } {ok'=ok } v') s | Yes Refl = Right (Update v', s, [])
-  insert (Enter {a} {ok}) (Value {a'=a'} {ok'=ok'} v') s | No _ = Left $ CouldNotChangeVal a' a
-insert (Update {a} {ok} v) (Value {a'} {ok'} v') s with (decBasic ok ok')
-  insert (Update {a} {ok} v) (Value {a'=a } {ok'=ok } v') s | Yes Refl = Right (Update v', s, [])
-  insert (Update {a} {ok} v) (Value {a'=a'} {ok'=ok'} v') s | No _ = Left $ CouldNotChangeVal a' a
-insert (Change {a} {ok} v) (Value {a'} {ok'} v') s with (decBasic ok ok')
-  insert (Change {a} {ok} l) (Value {a'=a } {ok'=ok } v') s | Yes Refl = Right (Change l, modify (write v' l) s, [some l])
-  insert (Change {a} {ok} l) (Value {a'=a'} {ok'=ok'} v') s | No _ = Left $ CouldNotChangeRef a' a
-insert (View _) c _ = Left $ CouldNotHandleValue c
-insert (Watch _) c _ = Left $ CouldNotHandleValue c
-insert (Select _) c _ = Left $ CouldNotHandleValue c
+---- Handling ------------------------------------------------------------------
 
 public export
-pick : Task h a -> Label -> List (Either NotApplicable (Task h a))
-pick t@(Edit n (Select ts)) l =
-  case lookup l ts of
-    Just t' => do
-      if (n, l) `elem` options t
-        then Right t'
-        else Left $ CouldNotGoTo l
-    Nothing => Left $ CouldNotFind l
-pick (Trans e1 t2) l =
-  case pick t2 l of
-    Right t' => Right $ Trans e1 t'
-    Left x => Left x
-pick (Step t1 e2) l =
-  case pick t1 l of
-    Right t' => Right $ Step t' e2
-    Left x => Left x
-pick _ _ = Left $ CouldNotPick
+insert : Editor h (Symbolic b) -> State h -> List (Editor h (Symbolic b), Some Token, State h, Delta h)
+insert (Enter {a=Symbolic b} {ok=SymbolIsBasic ok_b}) s = do
+  let (z, s') = fresh s
+  let z' = Fresh b z
+  done (Update (Symbol z'), some z', s', [])
+insert (Update {a=Symbolic b} {ok=SymbolIsBasic ok_b} _) s = do
+  let (z, s') = fresh s
+  let z' = Fresh b z
+  done (Update (Symbol z'), some z', s', [])
+insert (Change {a=Symbolic b} {ok=SymbolIsBasic ok_b} l) s = do
+  let (z, s') = fresh s
+  let z' = Fresh b z
+  done (Change l, some z', modify (write (Symbol z') l) s', [some l])
+insert (Enter) _ = empty --XXX why needed
+insert (Update _) _ = empty --XXX why needed
+insert (Change _) _ = empty --XXX why needed
+insert (View _) _ = empty
+insert (Watch _) _ = empty
+insert (Select _) _ = empty
 
 public export
-handle : (t : Task h a) -> IsNormal t => Input Concrete -> State h -> List (Either NotApplicable (Task h a, State h, Delta h))
----- Unnamed
-handle (Edit Unnamed e) i s =
-  Left $ CouldNotHandle i
+pick : Task h a -> List (Label, Task h a)
+pick (Edit n (Select ts)) = [ (l', t')          | (l', t') <- ts, not (failing t') ]
+pick (Trans e1 t2)        = [ (l', Trans e1 t') | (l', t') <- pick t2 ]
+pick (Step t1 e2)         = [ (l', Step t' e2)  | (l', t') <- pick t1 ]
+pick _                    = []
+
+public export
+handle : Simulation (Refined (Task h a) IsNormal) -> State h -> List (Simulation (Task h a), Input (Some Token), State h, Delta h)
 ---- Selections
-handle t@(Edit (Named k) (Select ts)) (Option (Named k') l) s =
-  case k ?= k' of
-    Yes Refl => case pick t l of
-      Right t' => Right (t', s, []) -- H-Select
-      Left x => Left x
-    No _ => Left $ CouldNotMatch (Named k) (Named k')
-handle (Edit (Named k) (Select ts)) i s =
-  Left $ CouldNotHandle i
+handle ((Edit (Named k) (Select ts) ** EditIsNormal) !! p) s = do
+  (l', t') <- pick (Edit (Named k) (Select ts))
+  done (t' !! p, Option (Named k) l', s, []) -- H-Select
 ---- Editors
-handle (Edit (Named k) e) (Insert k' c) s =
-  case k ?= k' of
-    Yes Refl => case insert e c s of
-      Right (e', s', d') => Right (Edit (Named k) e', s', d') -- H-Edit
-      Left x => Left x
-    No _ => Left $ CouldNotMatch (Named k) (Named k')
-handle (Edit (Named k) e) i s =
-  Left $ CouldNotHandle i
+handle ((Edit (Named k) e ** EditIsNormal) !! p) s = do
+  (e', z', s', d') <- insert e s
+  done (Edit (Named k) e' !! p, Insert k z', s', d') -- H-Edit
 ---- Pass
-handle (Trans e1 t2) @{TransIsNormal n2} i s =
-  case handle t2 i s of
-    Right (t2', s', d') => Right (Trans e1 t2', s', d') -- H-Trans
-    Left x => Left x
-handle (Step t1 e2) @{StepIsNormal n1} i s =
-  case handle t1 i s of
-    Right (t1', s', d') => Right (Step t1' e2, s', d') -- H-Step
-    Left _ => case i of
-      Option Unnamed l => case value t1 (get s) of
-        Just v1 => case pick (e2 v1) l of
-          Right t2' => Right (t2', s, []) -- H-Preselect
-          Left x => Left x
-        Nothing => Left $ CouldNotContinue
-      _ => Left $ CouldNotPick
-handle (Pair t1 t2) @{PairIsNormal n1 n2} i s =
-  case handle t1 i s of
-    Right (t1', s', d') => Right (Pair t1' t2, s', d') -- H-PairFirst
-    Left _ => case handle t2 i s of
-      Right (t2', s', d') => Right (Pair t1 t2', s', d') -- H-PairSecond
-      Left x => Left x
-handle (Choose t1 t2) @{ChooseIsNormal n1 n2} i s =
-  case handle t1 i s of
-    Right (t1', s', d') => Right (Choose t1' t2, s', d') -- H-ChooseFirst
-    Left _ => case handle t2 i s of
-      Right (t2', s', d') => Right (Choose t1 t2', s', d') -- H-ChoosSecond
-      Left x => Left x
+handle ((Trans e1 t2 ** TransIsNormal n2) !! p) s = do
+  (t2' !! p', i', s', d') <- handle ((t2 ** n2) !! p) s
+  done (Trans e1 t2' !! p', i', s', d') -- H-Trans
+handle ((Step t1 e2 ** StepIsNormal n1) !! p) s =
+  let fst = do
+        (t1' !! p', i', s', d') <- handle ((t1 ** n1) !! p) s -- H-Step
+        done (Step t1' e2 !! p', i', s', d')
+      snd = case value t1 (get s) of
+        Just v1 => do
+          (l', t2') <- pick (e2 v1) --XXX: what about p'
+          done (t2' !! p, Option Unnamed l', s, []) -- H-Preselect
+        Nothing => empty
+   in fst <|> snd
+handle ((Pair t1 t2 ** PairIsNormal n1 n2) !! p) s = do
+  --KNOW: use the same state!
+  (t1' !! p1, i1, s1, d1) <- handle ((t1 ** n1) !! p) s -- H-PairFirst
+  (t2' !! p2, i2, s2, d2) <- handle ((t2 ** n2) !! p) s -- H-PairSecond
+  done (Pair t1' t2 !! p1, i1, s1, d1) <|> done (Pair t1 t2' !! p2, i2, s2, d2)
+handle ((Choose t1 t2 ** ChooseIsNormal n1 n2) !! p) s = do
+  --KNOW: use the same state!
+  (t1' !! p1, i1, s1, d1) <- handle ((t1 ** n1) !! p) s -- H-ChooseFirst
+  (t2' !! p2, i2, s2, d2) <- handle ((t2 ** n2) !! p) s -- H-ChooseSecond
+  done (Choose t1' t2 !! p1, i1, s1, d1) <|> done (Choose t1 t2' !! p2, i2, s2, d2)
 ---- Rest
-handle (Done _) i _ = Left $ CouldNotHandle i
-handle (Fail) i _ = Left $ CouldNotHandle i
+handle ((Done _ ** DoneIsNormal) !! p) i = empty
+handle ((Fail ** FailIsNormal) !! p) i = empty
 
 ---- Fixation ------------------------------------------------------------------
 
 public export
-fixate : Task h a -> State h -> Delta h -> List (Refined (Task h a) IsNormal, State h)
-fixate t s d =
-  let ((t' ** n'), s', d') = normalise t s in
-    if intersect (d ++ d') (watching t') == []
-      then ((t' ** n'), s')
-      else fixate (assert_smaller t t') s' d'
+fixate : Simulation (Task h a) -> State h -> Delta h -> List (Simulation (Refined (Task h a) IsNormal), State h)
+fixate t s d = do
+  ((t' ** n') !! p', s', d') <- normalise t s
+  if intersect (d ++ d') (watching t') == []
+    then done ((t' ** n') !! p', s')
+    else fixate ((assert_smaller t t') !! p') s' d'
 
 ---- Initialisation ------------------------------------------------------------
 
 public export
-initialise : Task h a -> State h -> List (Refined (Task h a) IsNormal, State h)
+initialise : Simulation (Task h a) -> State h -> List (Simulation (Refined (Task h a) IsNormal), State h)
 initialise t s = fixate t s []
 
 ---- Interaction ---------------------------------------------------------------
 
 public export
-interact : (t : Task h a) -> IsNormal t => Input Concrete -> State h -> List (Either NotApplicable (Refined (Task h a) IsNormal, State h))
-interact n i s = case handle n i s of
-  Left e => Left e
-  Right (t', s', d') => Right (fixate t' s' d')
+interact : Simulation (Refined (Task h a) IsNormal) -> State h -> List (Simulation (Refined (Task h a) IsNormal), Input (Some Token), State h)
+interact n s = do
+  (t', i', s', d') <- handle n s
+  (n'', s'') <- fixate t' s' d'
+  done (n'', i', s'')
 
----- Execution -----------------------------------------------------------------
+---- Simulation ----------------------------------------------------------------
 
+{-
 public export
-execute : Task h a -> State h -> List Input -> List (Either NotApplicable (a, State h))
+execute : Task h a -> State h -> List (Simulation (Symbolic a), List (Input Dummy), State h)
 execute t s is =
   let ((t' ** n'), s') = initialise t s in
   go is t' s'

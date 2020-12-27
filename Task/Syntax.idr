@@ -48,15 +48,15 @@ mutual
   public export
   data Task : (h : Shape) -> (a : Type) -> Type where
     ---- Editors
-    Edit   : (n : Name) -> (e : Editor h a) -> Task h a
+    Edit   : (n : Name) -> (e : Editor h (Symbolic a)) -> Task h (Symbolic a)
     ---- Parallels
-    Pair   : (t1 : Task h (Symbolic a)) -> (t2 : Task h (Symbolic b)) -> Task h (Symbolic a, Symbolic b)
+    Pair   : (t1 : Task h (Symbolic a)) -> (t2 : Task h (Symbolic b)) -> Task h (Symbolic a, Symbolic b) --<<
     Done   : (v : Symbolic a) -> Task h (Symbolic a)
     Choose : (t1 : Task h (Symbolic a)) -> (t2 : Task h (Symbolic a)) -> Task h (Symbolic a)
     Fail   : Task h a
     ---- Steps
-    Trans  : (f : Symbolic a' -> Symbolic a) -> (t2 : Task h (Symbolic a')) -> Task h (Symbolic a)
-    Step   : (t1 : Task h (Symbolic a')) -> (c : Symbolic a' -> Task h (Symbolic a)) -> Task h (Symbolic a)
+    Trans  : (f : Symbolic a' -> Symbolic a) -> (t2 : Task h (Symbolic a')) -> Task h (Symbolic a) --<< f : Symbolic a' -> Simulation (Symbolic a)
+    Step   : (t1 : Task h (Symbolic a')) -> (c : Symbolic a' -> Task h (Symbolic a)) -> Task h (Symbolic a) --<< c : Symbolic a' -> Simulation (Task h (Symbolic a))
     ---- Asserts
     Assert : (p : Symbolic Bool) -> Task h (Symbolic Bool)
     Repeat : (t1 : Task h (Symbolic a)) -> Task h (Symbolic a)
@@ -87,36 +87,36 @@ data IsNormal : Task h a -> Type where
 
 ---- Inputs & Options ----------------------------------------------------------
 
----- Real inputs
+---- Concrete inputs
 
 public export
-data Real : Type where
-  Value : {a' : Type} -> {auto ok' : IsBasic a'} -> (v : a') -> Real
+data Concrete : Type where
+  Value : {a' : Type} -> {auto ok' : IsBasic a'} -> (v : a') -> Concrete
 
----- Dummy inputs
-
-public export
-data Dummy : Type where
-  Placeholder : (a' : Type) -> {auto ok' : IsBasic a'} -> Dummy
+---- Abstract inputs
 
 public export
-Eq Dummy where
-  (==) (Placeholder a {ok'=ok_a}) (Placeholder b {ok'=ok_b}) with (decBasic ok_a ok_b)
-    (==) (Placeholder a {ok'=ok_a}) (Placeholder a {ok'=ok_a}) | Yes Refl = True
-    (==) (Placeholder a {ok'=ok_a}) (Placeholder b {ok'=ok_b}) | No _ = False
-
-symbolInjective : {auto ok_a : IsBasic a} -> {auto ok_b : IsBasic b} -> (Placeholder a = Placeholder b) -> (ok_a = ok_b)
-symbolInjective {ok_a=ok} {ok_b=ok} Refl = Refl
+data Abstract : Type where
+  Dummy : (a' : Type) -> {auto ok' : IsBasic a'} -> Abstract
 
 public export
-DecEq Dummy where
-  decEq (Placeholder a {ok'=ok_a}) (Placeholder b {ok'=ok_b}) with (decBasic ok_a ok_b)
-    decEq (Placeholder a {ok'=ok_a}) (Placeholder a {ok'=ok_a}) | Yes Refl = Yes Refl
-    decEq (Placeholder a {ok'=ok_a}) (Placeholder b {ok'=ok_b}) | No cntr = No (cntr . symbolInjective)
+Eq Abstract where
+  (==) (Dummy a {ok'=ok_a}) (Dummy b {ok'=ok_b}) with (decBasic ok_a ok_b)
+    (==) (Dummy a {ok'=ok_a}) (Dummy a {ok'=ok_a}) | Yes Refl = True
+    (==) (Dummy a {ok'=ok_a}) (Dummy b {ok'=ok_b}) | No _ = False
+
+dummyInjective : {auto ok_a : IsBasic a} -> {auto ok_b : IsBasic b} -> (Dummy a = Dummy b) -> (ok_a = ok_b)
+dummyInjective {ok_a=ok} {ok_b=ok} Refl = Refl
+
+public export
+DecEq Abstract where
+  decEq (Dummy a {ok'=ok_a}) (Dummy b {ok'=ok_b}) with (decBasic ok_a ok_b)
+    decEq (Dummy a {ok'=ok_a}) (Dummy a {ok'=ok_a}) | Yes Refl = Yes Refl
+    decEq (Dummy a {ok'=ok_a}) (Dummy b {ok'=ok_b}) | No cntr = No (cntr . dummyInjective)
 
 ---- Inputs
 
-||| Inputs are parametrised over concrete values or symbols
+||| Inputs are parametrised over concrete or abstract values
 public export
 data Input v
   = Insert Nat v
@@ -124,7 +124,7 @@ data Input v
 
 public export
 Pick : Nat -> Label -> Input v
-Pick n l = Option (Named n) l
+Pick k l = Option (Named k) l
 
 public export
 Prepick : Label -> Input v
@@ -148,7 +148,7 @@ DecEq v => DecEq (Input v) where
   decEq (Option n l) (Option n' l') = ?input_decEq_pick
   decEq _            _              = ?action_decEq_rest
 
-public export
-dummify : Input Real -> Input Dummy
-dummify (Insert k (Value {a'} _)) = Insert k (Placeholder a')
-dummify (Option n l)              = Option n l
+-- public export
+-- dummify : Input Concrete -> Input Abstract
+-- dummify (Insert k (Value {a'} _)) = Insert k (Symbolic')
+-- dummify (Option n l)              = Option n l

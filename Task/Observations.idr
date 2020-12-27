@@ -135,16 +135,16 @@ ui (Step t1 e2)       @{StepIsNormal n1}      s = ui t1 s ++ ">>={" ++ show ls +
 ---- Inputs --------------------------------------------------------------------
 
 public export
-inputs' : Nat -> Editor h a -> List (Input Dummy)
-inputs' k (Enter {a})    = [Insert k (Placeholder a)]
-inputs' k (Update {a} _) = [Insert k (Placeholder a)]
+inputs' : Nat -> Editor h a -> List (Input Abstract)
+inputs' k (Enter {a})    = [Insert k (Dummy a)]
+inputs' k (Update {a} _) = [Insert k (Dummy a)]
 inputs' k (View {a} _)   = []
 inputs' k (Select ts)    = map (\l => Pick k l) (possibilities ts)
-inputs' k (Change {a} _) = [Insert k (Placeholder a)]
+inputs' k (Change {a} _) = [Insert k (Dummy a)]
 inputs' k (Watch {a} _)  = []
 
 public export
-inputs : (t : Task h a) -> IsNormal t => Heap h -> List (Input Dummy)
+inputs : (t : Task h a) -> IsNormal t => Heap h -> List (Input Abstract)
 inputs (Edit (Named k) e) @{EditIsNormal}         s = inputs' k e
 inputs (Trans _ t2)       @{TransIsNormal n2}     s = inputs t2 s
 inputs (Pair t1 t2)       @{PairIsNormal n1 n2}   s = inputs t1 s ++ inputs t2 s

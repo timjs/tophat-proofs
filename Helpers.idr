@@ -123,6 +123,8 @@ public export
 (~>) : a -> b -> (a, b)
 (~>) x y = (x, y)
 
+---- Monads --------------------------------------------------------------------
+
 public export
 done : Monad m => a -> m a
 done = pure
