@@ -8,7 +8,7 @@ import Task.Input
 import Task.Syntax
 import Task.Observe
 
--- %default total
+%default total
 
 ---- Errors --------------------------------------------------------------------
 
@@ -31,8 +31,8 @@ data NotApplicable
 public export
 normalise : Simulation (Task h a) -> State h -> List (Simulation (Refined (Task h a) IsNormal), State h, Delta h)
 ---- Step
-normalise (Step t1 e2 !! p) s = do
-  ((t1' ** n1') !! p', s', d') <- normalise (t1 !! p) s
+normalise t@(Step t1 e2 !! p) s = do
+  ((t1' ** n1') !! p', s', d') <- normalise (assert_smaller t (t1 !! p)) s
   let stay = (Step t1' e2 ** StepIsNormal n1') !! p'
   case value t1' (get s') of
     Nothing => done (stay, s', d') -- N-StepNone
@@ -44,34 +44,34 @@ normalise (Step t1 e2 !! p) s = do
           then done (stay, s', d') -- N-StepWait
           --NOTE: Idris2 can't prove termination when writing `t2` instead of `e2 v1`, see #493
           else do
-            (n2', s'', d'') <- normalise (t2 !! p') s'
+            (n2', s'', d'') <- assert_total (normalise (t2 !! p') s')
             done (n2', s'', d' ++ d'') -- N-StepCont
 ---- Choose
-normalise (Choose t1 t2 !! p) s = do
-  ((t1' ** n1') !! p', s', d') <- normalise (t1 !! p) s
+normalise t@(Choose t1 t2 !! p) s = do
+  ((t1' ** n1') !! p', s', d') <- normalise (assert_smaller t (t1 !! p)) s
   case value t1' (get s') of
     Just _  => done ((t1' ** n1') !! p', s', d') -- N-ChooseLeft
     Nothing => do
-      ((t2' ** n2') !! p'', s'', d'') <- normalise (t2 !! p') s'
+      ((t2' ** n2') !! p'', s'', d'') <- normalise (assert_smaller t (t2 !! p')) s'
       case value t2' (get s'') of
         Just _  => done ((t2' ** n2') !! p'', s'', d' ++ d'') -- N-ChooseRight
         Nothing => done ((Choose t1' t2' ** ChooseIsNormal n1' n2') !! p'', s'', d' ++ d'') -- N-ChooseNone
 ---- Test
-normalise (Test b t1 t2 !! p) s =
+normalise t@(Test b t1 t2 !! p) s =
   let fst = do
-        (n1' !! p1', s', d') <- normalise (t1 !! p) s
+        (n1' !! p1', s', d') <- normalise (assert_smaller t (t1 !! p)) s
         done (n1' !! p1' ++ walk b, s', d')
       snd = do
-        (n2' !! p2', s', d') <- normalise (t2 !! p) s
+        (n2' !! p2', s', d') <- normalise (assert_smaller t (t2 !! p)) s
         done (n2' !! p2' ++ walk (Not b), s', d')
    in fst <|> snd
 ---- Converge
-normalise (Trans f t2 !! p) s = do
-  ((t2' ** n2') !! p', s', d') <- normalise (t2 !! p) s
+normalise t@(Trans f t2 !! p) s = do
+  ((t2' ** n2') !! p', s', d') <- normalise (assert_smaller t (t2 !! p)) s
   done ((Trans f t2' ** TransIsNormal n2') !! p', s', d') -- N-Trans
-normalise (Pair t1 t2 !! p) s = do
-  ((t1' ** n1') !! p' , s' , d' ) <- normalise (t1 !! p ) s
-  ((t2' ** n2') !! p'', s'', d'') <- normalise (t2 !! p') s'
+normalise (t@(Pair t1 t2) !! p) s = do
+  ((t1' ** n1') !! p' , s' , d' ) <- normalise (assert_smaller t (t1 !! p )) s
+  ((t2' ** n2') !! p'', s'', d'') <- normalise (assert_smaller t (t2 !! p')) s'
   done ((Pair t1' t2' ** PairIsNormal n1' n2') !! p'', s'', d' ++ d'') -- N-Pair
 ---- Ready
 normalise (Done x !! p) s =
@@ -85,8 +85,8 @@ normalise (Edit Unnamed e !! p) s = do
 normalise (Edit (Named k) e !! p) s = do
   done ((Edit (Named k) e ** EditIsNormal) !! p, s, []) -- N-Editor
 ---- Resolve
-normalise (Repeat t1 !! p) s = do
-  ((t1' ** n1') !! p', s', d') <- normalise (t1 !! p) s
+normalise t@(Repeat t1 !! p) s = do
+  ((t1' ** n1') !! p', s', d') <- normalise (assert_smaller t (t1 !! p)) s
   done ((Step t1' (\x => Edit Unnamed (Select ["Repeat" ~> Repeat t1, "Exit" ~> Done x])) ** StepIsNormal n1') !! p', s', d') -- N-Repeat
   -- normalise (Step t1 (\x => Edit Unnamed (Select ["Repeat" ~> Repeat t1, "Exit" ~> Done x])) !! p') s <-- Should be equivallent
 normalise (Assert b !! p) s =
@@ -97,6 +97,7 @@ normalise (Assert b !! p) s =
 normalise (Assign v r !! p) s = do
   let s' = modify (write v r) s
   done ((Done (Value ()) ** DoneIsNormal) !! p, s', [Pack r])
+normalise _ _ = empty
 
 ---- Handling ------------------------------------------------------------------
 
@@ -136,12 +137,12 @@ handle ((Edit (Named k) e ** EditIsNormal) !! p) s = do
   (e', z', s', d') <- insert e s
   done (Edit (Named k) e' !! p, Insert k z', s', d') -- H-Edit
 ---- Pass
-handle ((Trans e1 t2 ** TransIsNormal n2) !! p) s = do
-  (t2' !! p', i', s', d') <- handle ((t2 ** n2) !! p) s
+handle t@((Trans e1 t2 ** TransIsNormal n2) !! p) s = do
+  (t2' !! p', i', s', d') <- handle (assert_smaller t ((t2 ** n2) !! p)) s
   done (Trans e1 t2' !! p', i', s', d') -- H-Trans
-handle ((Step t1 e2 ** StepIsNormal n1) !! p) s =
+handle t@((Step t1 e2 ** StepIsNormal n1) !! p) s =
   let fst = do
-        (t1' !! p', i', s', d') <- handle ((t1 ** n1) !! p) s -- H-Step
+        (t1' !! p', i', s', d') <- handle (assert_smaller t ((t1 ** n1) !! p)) s -- H-Step
         done (Step t1' e2 !! p', i', s', d')
       snd = case value t1 (get s) of
         Just v1 => do
@@ -149,15 +150,15 @@ handle ((Step t1 e2 ** StepIsNormal n1) !! p) s =
           done (t2' !! p, Option Unnamed l', s, []) -- H-Preselect
         Nothing => empty
    in fst <|> snd
-handle ((Pair t1 t2 ** PairIsNormal n1 n2) !! p) s = do
+handle t@((Pair t1 t2 ** PairIsNormal n1 n2) !! p) s = do
   --KNOW: use the same state!
-  (t1' !! p1, i1, s1, d1) <- handle ((t1 ** n1) !! p) s -- H-PairFirst
-  (t2' !! p2, i2, s2, d2) <- handle ((t2 ** n2) !! p) s -- H-PairSecond
+  (t1' !! p1, i1, s1, d1) <- handle (assert_smaller t ((t1 ** n1) !! p)) s -- H-PairFirst
+  (t2' !! p2, i2, s2, d2) <- handle (assert_smaller t ((t2 ** n2) !! p)) s -- H-PairSecond
   done (Pair t1' t2 !! p1, i1, s1, d1) <|> done (Pair t1 t2' !! p2, i2, s2, d2)
-handle ((Choose t1 t2 ** ChooseIsNormal n1 n2) !! p) s = do
+handle t@((Choose t1 t2 ** ChooseIsNormal n1 n2) !! p) s = do
   --KNOW: use the same state!
-  (t1' !! p1, i1, s1, d1) <- handle ((t1 ** n1) !! p) s -- H-ChooseFirst
-  (t2' !! p2, i2, s2, d2) <- handle ((t2 ** n2) !! p) s -- H-ChooseSecond
+  (t1' !! p1, i1, s1, d1) <- handle (assert_smaller t ((t1 ** n1) !! p)) s -- H-ChooseFirst
+  (t2' !! p2, i2, s2, d2) <- handle (assert_smaller t ((t2 ** n2) !! p)) s -- H-ChooseSecond
   done (Choose t1' t2 !! p1, i1, s1, d1) <|> done (Choose t1 t2' !! p2, i2, s2, d2)
 ---- Rest
 handle ((Done _ ** DoneIsNormal) !! p) i = empty
@@ -171,7 +172,7 @@ fixate t s d = do
   ((t' ** n') !! p', s', d') <- normalise t s
   if intersect (d ++ d') (watching t') == []
     then done ((t' ** n') !! p', s')
-    else fixate ((assert_smaller t t') !! p') s' d'
+    else fixate (assert_smaller t (t' !! p')) s' d'
 
 ---- Initialisation ------------------------------------------------------------
 
