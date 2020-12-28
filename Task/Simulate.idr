@@ -194,7 +194,8 @@ public export
 simulate : Fuel -> Task h a -> State h -> List (List (Input (Some Token)), Simulation a)
 simulate us t s = do
   (n', s') <- initialise (final t) s
-  go us n' [] s'
+  (is, v) <- go us n' [] s'
+  done (reverse is, v)
   where
     go : Fuel -> Simulation (Refined (Task h a) IsNormal) -> List (Input (Some Token)) -> State h -> List (List (Input (Some Token)), Simulation a)
     go us ((t ** n) !! p) is s with (value t (get s))
