@@ -10,7 +10,7 @@ import Data.Stream
 
 public export
 data Token : Type -> Type where
-  Fresh : (a : Type) -> Id -> Token a
+  Fresh : (0 a : Type) -> Id -> Token a
 
 public export
 data Symbolic : Type -> Type where
@@ -46,6 +46,10 @@ data Symbolic : Type -> Type where
 export
 Path : Type
 Path = Symbolic Bool
+
+export
+walk : Symbolic Bool -> Path
+walk = id
 
 infixr 3 ++
 
