@@ -35,6 +35,10 @@ export
 Eq1 (Ref h) where
   eq1 Loc Loc = True
 
+export
+Eq (Ref h a) where
+  Loc == Loc = True
+
 ||| Concrete heap of certain shape
 public export
 data Heap : Shape -> Type where
