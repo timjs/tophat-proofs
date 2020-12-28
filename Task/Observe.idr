@@ -1,4 +1,4 @@
-module Task.Observations
+module Task.Observe
 
 import Helpers
 import Task.Syntax

@@ -37,13 +37,13 @@ assert = Assert
 
 ---- Editors
 
-enter : {a : Type} -> IsBasic a => Task h a
+enter : IsBasic a => Show a => Task h a
 enter = new Enter
 
-update : {a : Type} -> IsBasic a => a -> Task h a
+update : IsBasic a => Show a => a -> Task h a
 update v = new (Update v)
 
-view : {a : Type} -> IsBasic a => a -> Task h a
+view : IsBasic a => Show a => a -> Task h a
 view v = new (View v)
 
 select : List (Label, Task h a) -> Task h a
@@ -54,10 +54,10 @@ select ts = new (Select ts)
 -- share : IsBasic a => a -> Task h (Ref h a)
 -- share = Share
 
-watch : {a : Type} -> IsBasic a => Ref h a -> Task h a
+watch : IsBasic a => Show a => Eq a => Ref h a -> Task h a
 watch l = new (Watch l)
 
-change : {a : Type} -> IsBasic a => Ref h a -> Task h a
+change : IsBasic a => Show a => Eq a => Ref h a -> Task h a
 change l = new (Change l)
 
 infixl 1 <<-
@@ -66,7 +66,7 @@ infixl 1 <<=
 (<<-) : IsBasic a => Ref h a -> a -> Task h ()
 (<<-) = flip Assign
 
-(<<=) : {a : Type} -> IsBasic a => Ref h a -> (a -> a) -> Task h ()
+(<<=) : IsBasic a => Show a => Eq a => Ref h a -> (a -> a) -> Task h ()
 (<<=) r f = do
   x <- watch r
   r <<- f x
@@ -91,13 +91,13 @@ choose = foldr (<|>) empty
 
 branch : List (Bool, Task h a) -> Task h a
 branch [] = empty
-branch ((b, t) :: ts) = if b then t else branch ts
+branch ((b, t) :: ts) = Test b t (branch ts)
 
 branch' : List (Bool, Task h a) -> Task h a
 branch' = foldr pick empty
   where
     pick : (Bool, Task h a) -> Task h a -> Task h a
-    pick (b, t) res = if b then t else res
+    pick (b, t) res = Test b t res
 
 (<?>) : Task h a -> Task h a -> Task h a
 (<?>) t1 t2 = select ["Left" ~> t1, "Right" ~> t2]

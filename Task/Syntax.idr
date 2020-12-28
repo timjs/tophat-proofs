@@ -34,12 +34,12 @@ mutual
   public export
   data Editor : (h : Shape) -> (a : Type) -> Type where
     ---- Owned
-    Enter  : IsBasic a => Show a => Eq a => Editor h a  -- Also needs `Show` bacause semantics transforms `Enter` into an `Update`
-    Update : IsBasic a => Show a => Eq a => (v : a) -> Editor h a
-    View   : IsBasic a => Show a => Eq a => (v : a) -> Editor h a
+    Enter  : IsBasic a => Show a => Editor h a  -- Also needs `Show` bacause semantics transforms `Enter` into an `Update`
+    Update : IsBasic a => Show a => (v : a) -> Editor h a
+    View   : IsBasic a => Show a => (v : a) -> Editor h a
     Select : (ts : List (Label, Task h a)) -> Editor h a
     ---- Shared
-    Change : IsBasic a => Show a => Eq a => (r : Ref h a) -> Editor h a
+    Change : IsBasic a => Show a => Eq a => (r : Ref h a) -> Editor h a  -- Needs `Eq` to save in `Pack`
     Watch  : IsBasic a => Show a => Eq a => (r : Ref h a) -> Editor h a
 
 ---- Normalised predicate ------------------------------------------------------
@@ -53,10 +53,3 @@ data IsNormal : Task h a -> Type where
   FailIsNormal   : IsNormal Fail
   TransIsNormal  : IsNormal t2 -> IsNormal (Trans f t2)
   StepIsNormal   : IsNormal t1 -> IsNormal (Step t1 c)
-
----- Derived -------------------------------------------------------------------
-
-public export
-Guard : List (Bool, Task h a) -> Task h a
-Guard [] = Fail
-Guard ((p, t) :: bs) = Test p t (Guard bs)
