@@ -1,4 +1,4 @@
-module Task.Derived
+module Task.Combinators
 
 import Helpers
 import Task.Syntax
