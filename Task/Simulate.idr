@@ -1,12 +1,12 @@
-module Task.Semantics
+module Task.Simulate
 
 import Helpers
 import Data.Fuel
 import Data.List
 import Data.Symbolic
+import Task.Input
 import Task.Syntax
-import Task.State
-import Task.Observations
+import Task.Observe
 
 -- %default total
 
@@ -60,10 +60,10 @@ normalise (Choose t1 t2 !! p) s = do
 normalise (Test b t1 t2 !! p) s =
   let fst = do
         (n1' !! p1', s', d') <- normalise (t1 !! p) s
-        done (n1' !! p1' ++ b, s', d')
+        done (n1' !! p1' ++ walk b, s', d')
       snd = do
         (n2' !! p2', s', d') <- normalise (t2 !! p) s
-        done (n2' !! p2' ++ Not b, s', d')
+        done (n2' !! p2' ++ walk (Not b), s', d')
    in fst <|> snd
 ---- Converge
 normalise (Trans f t2 !! p) s = do
@@ -90,33 +90,30 @@ normalise (Repeat t1 !! p) s = do
   done ((Step t1' (\x => Edit Unnamed (Select ["Repeat" ~> Repeat t1, "Exit" ~> Done x])) ** StepIsNormal n1') !! p', s', d') -- N-Repeat
   -- normalise (Step t1 (\x => Edit Unnamed (Select ["Repeat" ~> Repeat t1, "Exit" ~> Done x])) !! p') s <-- Should be equivallent
 normalise (Assert b !! p) s =
-  done ((Done b ** DoneIsNormal) !! p ++ b, s, []) -- N-Assert
+  done ((Done b ** DoneIsNormal) !! p ++ walk b, s, []) -- N-Assert
 -- normalise (Share b !! p) s = do
 --   let (l, s') = modify (alloc b) s
 --   done ((Done l ** DoneIsNormal) !! p, s')
-normalise (Assign b l !! p) s = do
-  let s' = modify (write b l) s
-  done ((Done (Value ()) ** DoneIsNormal) !! p, s', [some l])
+normalise (Assign v r !! p) s = do
+  let s' = modify (write v r) s
+  done ((Done (Value ()) ** DoneIsNormal) !! p, s', [Pack r])
 
 ---- Handling ------------------------------------------------------------------
 
 public export
 insert : Editor h (Symbolic b) -> State h -> List (Editor h (Symbolic b), Some Token, State h, Delta h)
-insert (Enter {a=Symbolic b} {ok=SymbolIsBasic ok_b}) s = do
+insert (Enter) s = do
   let (z, s') = fresh s
   let z' = Fresh b z
-  done (Update (Symbol z'), some z', s', [])
-insert (Update {a=Symbolic b} {ok=SymbolIsBasic ok_b} _) s = do
+  done (Update (Symbol z'), Pack z', s', Prelude.Nil)
+insert (Update _) s = do
   let (z, s') = fresh s
   let z' = Fresh b z
-  done (Update (Symbol z'), some z', s', [])
-insert (Change {a=Symbolic b} {ok=SymbolIsBasic ok_b} l) s = do
+  done (Update (Symbol z'), Pack z', s', Prelude.Nil)
+insert (Change r) s = do
   let (z, s') = fresh s
   let z' = Fresh b z
-  done (Change l, some z', modify (write (Symbol z') l) s', [some l])
-insert (Enter) _ = empty --XXX why needed
-insert (Update _) _ = empty --XXX why needed
-insert (Change _) _ = empty --XXX why needed
+  done (Change r, Pack z', modify (write (Symbol z') r) s', [Pack r])
 insert (View _) _ = empty
 insert (Watch _) _ = empty
 insert (Select _) _ = empty

@@ -2,6 +2,7 @@ module Task.Syntax
 
 import Helpers
 import public Data.Name
+import public Data.Symbolic
 import public Type.Basic
 import public Task.State
 
@@ -14,33 +15,33 @@ mutual
   public export
   data Task : (h : Shape) -> (a : Type) -> Type where
     ---- Editors
-    Edit   : (n : Name) -> (e : Editor h a) -> Task h a
+    Edit   : (n : Name) -> (e : Editor h (Symbolic a)) -> Task h (Symbolic a)
     ---- Parallels
-    Pair   : (t1 : Task h a) -> (t2 : Task h b) -> Task h (a, b)
-    Done   : (v : a) -> Task h a
-    Choose : (t1 : Task h a) -> (t2 : Task h a) -> Task h a
-    Test   : Bool -> Task h a -> Task h a -> Task h a
+    Pair   : (t1 : Task h (Symbolic a)) -> (t2 : Task h (Symbolic b)) -> Task h (Symbolic a, Symbolic b) --<<
+    Done   : (v : Symbolic a) -> Task h (Symbolic a)
+    Choose : (t1 : Task h (Symbolic a)) -> (t2 : Task h (Symbolic a)) -> Task h (Symbolic a)
+    Test   : Symbolic Bool -> Task h (Symbolic a) -> Task h (Symbolic a) -> Task h (Symbolic a)
     Fail   : Task h a
     ---- Steps
-    Trans  : (f : a' -> a) -> (t2 : Task h a') -> Task h a --<< f : Symbolic a' -> Simulation a
-    Step   : (t1 : Task h a') -> (c : a' -> Task h a) -> Task h a --<< c : Symbolic a' -> Simulation (Task h a)
+    Trans  : (f : Symbolic a' -> Symbolic a) -> (t2 : Task h (Symbolic a')) -> Task h (Symbolic a) --<< f : Symbolic a' -> Simulation (Symbolic a)
+    Step   : (t1 : Task h (Symbolic a')) -> (c : Symbolic a' -> Task h (Symbolic a)) -> Task h (Symbolic a) --<< c : Symbolic a' -> Simulation (Task h (Symbolic a))
     ---- Asserts
-    Assert : (p : Bool) -> Task h Bool
-    Repeat : (t1 : Task h a) -> Task h a
+    Assert : (p : Symbolic Bool) -> Task h (Symbolic Bool)
+    Repeat : (t1 : Task h (Symbolic a)) -> Task h (Symbolic a)
     ---- Stores
     -- Share : IsBasic a => a -> Task h (Ref h a)
-    Assign : IsBasic a => (v : a) -> (r : Ref h a) -> Task h ()
+    Assign : IsBasic a => Eq a => (v : Symbolic a) -> (r : Ref h (Symbolic a)) -> Task h (Symbolic ())
 
   public export
   data Editor : (h : Shape) -> (a : Type) -> Type where
     ---- Owned
-    Enter  : IsBasic a => Show a => Editor h a  -- Also needs `Show` bacause semantics transforms `Enter` into an `Update`
-    Update : IsBasic a => Show a => (v : a) -> Editor h a
-    View   : IsBasic a => Show a => (v : a) -> Editor h a
-    Select : (ts : List (Label, Task h a)) -> Editor h a
+    Enter  : IsBasic a => Show a => Eq a => Editor h (Symbolic a)  -- Also needs `Show` bacause semantics transforms `Enter` into an `Update`
+    Update : IsBasic a => Show a => Eq a => (v : Symbolic a) -> Editor h (Symbolic a)
+    View   : IsBasic a => Show a => Eq a => (v : Symbolic a) -> Editor h (Symbolic a)
+    Select : (ts : List (Label, Task h (Symbolic a))) -> Editor h (Symbolic a)
     ---- Shared
-    Change : IsBasic a => Show a => Eq a => (r : Ref h a) -> Editor h a  -- Needs `Eq` to save in `Pack`
-    Watch  : IsBasic a => Show a => Eq a => (r : Ref h a) -> Editor h a
+    Change : IsBasic a => Show a => Eq a => (r : Ref h (Symbolic a)) -> Editor h (Symbolic a)  -- Needs `Eq` to save in `Pack`
+    Watch  : IsBasic a => Show a => Eq a => (r : Ref h (Symbolic a)) -> Editor h (Symbolic a)
 
 ---- Normalised predicate ------------------------------------------------------
 
