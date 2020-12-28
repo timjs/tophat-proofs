@@ -1,6 +1,7 @@
 module Task.Observe
 
 import Helpers
+import Data.Symbolic
 import Task.Syntax
 import Task.Input
 
@@ -21,7 +22,7 @@ public export
 value : (t : Task h a) -> IsNormal t => Heap h -> Maybe a
 value (Edit (Named _) e) @{EditIsNormal}         s = value' e s
 value (Trans f t1)       @{TransIsNormal n1}     s = map f (value t1 s)
-value (Pair t1 t2)       @{PairIsNormal n1 n2}   s = value t1 s <&> value t2 s
+value (Pair t1 t2)       @{PairIsNormal n1 n2}   s = map wrap (value t1 s <&> value t2 s)
 value (Done v)           @{DoneIsNormal}         _ = Just v
 value (Choose t1 t2)     @{ChooseIsNormal n1 n2} s = value t1 s <|> value t2 s
 value (Fail)             @{FailIsNormal}         _ = Nothing
@@ -99,6 +100,9 @@ labels (_)                  = []
 
 ---- Interface -----------------------------------------------------------------
 
+{- UI is not needed for simulation.
+   Removing it helps in not adding a Show constraint on Tuple in Data.Symbolic.
+
 public export
 ui' : Id -> Editor h a -> Heap h -> String
 ui' k (Enter)     _ = "[ ](" ++ show k ++ ")"
@@ -121,6 +125,7 @@ ui (Step t1 e2)       @{StepIsNormal n1}      s = ui t1 s ++ ">>={" ++ show ls +
     ls = case value t1 s of
       Nothing => []
       Just v1 => labels (e2 v1)
+-}
 
 ---- Inputs --------------------------------------------------------------------
 

@@ -17,7 +17,7 @@ mutual
     ---- Editors
     Edit   : (n : Name) -> (e : Editor h (Symbolic a)) -> Task h (Symbolic a)
     ---- Parallels
-    Pair   : (t1 : Task h (Symbolic a)) -> (t2 : Task h (Symbolic b)) -> Task h (Symbolic a, Symbolic b) --<<
+    Pair   : (t1 : Task h (Symbolic a)) -> (t2 : Task h (Symbolic b)) -> Task h (Symbolic (a, b)) --<<
     Done   : (v : Symbolic a) -> Task h (Symbolic a)
     Choose : (t1 : Task h (Symbolic a)) -> (t2 : Task h (Symbolic a)) -> Task h (Symbolic a)
     Test   : Symbolic Bool -> Task h (Symbolic a) -> Task h (Symbolic a) -> Task h (Symbolic a)
