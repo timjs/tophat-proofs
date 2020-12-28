@@ -87,6 +87,7 @@ bothNeq cntr_a cntr_b Refl = cntr_a Refl
 
 ---- Decidability --------------------------------------------------------------
 
+export
 decBasic : (b1 : IsBasic a1) -> (b2 : IsBasic a2) -> Dec (b1 = b2)
 decBasic BoolIsBasic         BoolIsBasic         = Yes Refl
 decBasic BoolIsBasic         IntIsBasic          = No uninhBoolInt

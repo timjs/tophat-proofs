@@ -35,11 +35,11 @@ unrefine : Refined a p -> a
 unrefine (Refine x _) = x
 
 public export
-implicate : (Refined a f -> b) -> ((x : a) -> {auto p : f x} -> b)
+implicate : (Refined a f -> b) -> ((x : a) -> f x => b)
 implicate g x = g (refine x)
 
 public export
-unimplicate : ((x : a) -> {auto p : f x} -> b) -> Refined a f -> b
+unimplicate : ((x : a) -> f x => b) -> (Refined a f -> b)
 unimplicate g (Refine x p) = g x
 
 ---- Equality of type constructors ---------------------------------------------

@@ -2,7 +2,7 @@ module Task.Observations
 
 import Helpers
 import Task.Syntax
-import Task.State
+import Task.Input
 
 %default total
 
@@ -26,17 +26,6 @@ value (Done v)           @{DoneIsNormal}         _ = Just v
 value (Choose t1 t2)     @{ChooseIsNormal n1 n2} s = value t1 s <|> value t2 s
 value (Fail)             @{FailIsNormal}         _ = Nothing
 value (Step _ _)         @{StepIsNormal n2}      _ = Nothing
-
--- -- Cannot be automatically proven total by Idris...
--- public export
--- value_ : Refined (Task h a) IsNormal -> Heap h -> Maybe a
--- value_ (Edit (Named _) e ** EditIsNormal)         s = value' e s
--- value_ (Trans f t1       ** TransIsNormal n1)     s = map f (value_ (refine t1) s)
--- value_ (Pair t1 t2       ** PairIsNormal n1 n2)   s = value_ (refine t1) s <&> value_ (refine t2) s
--- value_ (Done v           ** DoneIsNormal)         _ = Just v
--- value_ (Choose t1 t2     ** ChooseIsNormal n1 n2) s = value_ (refine t1) s <|> value_ (refine t2) s
--- value_ (Fail             ** FailIsNormal)         _ = Nothing
--- value_ (Step _ _         ** StepIsNormal n2)      _ = Nothing
 
 ---- Failing -------------------------------------------------------------------
 
@@ -73,8 +62,8 @@ watching' (Enter)    = []
 watching' (Update _) = []
 watching' (View _)   = []
 watching' (Select _) = []
-watching' (Change l) = [some l]
-watching' (Watch l)  = [some l]
+watching' (Change r) = [Pack r]
+watching' (Watch r)  = [Pack r]
 
 public export
 watching : (t : Task h a) -> IsNormal t => Delta h
@@ -94,7 +83,7 @@ possibilities : List (Label, Task h a) -> List Label
 possibilities = map fst . filter (not . failing . snd) --<< [ l | (l, t) <- _, not (failing t) ] but using this in proofs is tedious
 
 public export
-options : (Task h a) -> List (Name, Label)
+options : Task h a -> List (Name, Label)
 options (Edit k (Select ts)) = map (\l => (k, l)) (possibilities ts) --<< [ (k, l) | l <- possibilities ts ]
 options (Trans _ t2)         = options t2
 options (Step t1 _)          = options t1
@@ -102,7 +91,7 @@ options (_)                  = []
 
 ||| All *enabled and disabled* labels which could be sent to a task.
 public export
-labels : (Task h a) -> List Label
+labels : Task h a -> List Label
 labels (Edit _ (Select ts)) = map fst ts --<< [ l | (l, _) <- ts ]
 labels (Trans _ t2)         = labels t2
 labels (Step t1 _)          = labels t1
@@ -111,13 +100,13 @@ labels (_)                  = []
 ---- Interface -----------------------------------------------------------------
 
 public export
-ui' : Nat -> Editor h a -> Heap h -> String
+ui' : Id -> Editor h a -> Heap h -> String
 ui' k (Enter)     _ = "[ ](" ++ show k ++ ")"
 ui' k (Update b)  _ = "[ " ++ show b ++ " ](" ++ show k ++ ")"
 ui' _ (View b)    _ = "[ " ++ show b ++ " ]"
 ui' k (Select ts) _ = "{ " ++ show (map fst ts) ++ " }(" ++ show k ++ ")"
-ui' k (Change l)  s = "[ " ++ show (read l s) ++ " ](" ++ show k ++ ")"
-ui' _ (Watch l)   s = "[ " ++ show (read l s) ++ " ]"
+ui' k (Change r)  s = "[ " ++ show (read r s) ++ " ](" ++ show k ++ ")"
+ui' _ (Watch r)   s = "[ " ++ show (read r s) ++ " ]"
 
 ui : (t : Task h a) -> IsNormal t => Heap h -> String
 ui (Edit (Named k) e) @{EditIsNormal}         s = ui' k e s
@@ -136,7 +125,7 @@ ui (Step t1 e2)       @{StepIsNormal n1}      s = ui t1 s ++ ">>={" ++ show ls +
 ---- Inputs --------------------------------------------------------------------
 
 public export
-inputs' : Nat -> Editor h a -> List (Input Abstract)
+inputs' : Id -> Editor h a -> List (Input Abstract)
 inputs' k (Enter {a})    = [Insert k (Dummy a)]
 inputs' k (Update {a} _) = [Insert k (Dummy a)]
 inputs' k (View {a} _)   = []

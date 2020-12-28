@@ -1,15 +1,12 @@
 module Data.Symbolic
 
 import Helpers
--- import Data.Basic
+import Data.Name
+import Data.Stream
 
 %default total
 
 ---- Symbols -------------------------------------------------------------------
-
-public export
-Id : Type
-Id = Nat
 
 public export
 data Token : Type -> Type where
@@ -40,19 +37,19 @@ data Symbolic : Type -> Type where
   (/.) : Symbolic Int -> Symbolic Int -> Symbolic Int
   (%.) : Symbolic Int -> Symbolic Int -> Symbolic Int
   -- Tuples
-  -- Tuple : Symbolic a -> Symbolic b -> Symbolic (a, b)
-  -- Fst : Symbolic (a, b) -> Symbolic a
-  -- Snd : Symbolic (a, b) -> Symbolic b
+  -- Fst : (Show a, Show b) => Symbolic (a, b) -> Symbolic a
+  -- Snd : (Show a, Show b) => Symbolic (a, b) -> Symbolic b
+  -- (**.) : (Eq a, Eq b) => (Show a, Show b) => Symbolic a -> Symbolic b -> Symbolic (a, b)
 
 ---- Paths and Simulations -----------------------------------------------------
 
-public export
+export
 Path : Type
 Path = Symbolic Bool
 
 infixr 3 ++
 
-public export
+export
 (++) : Path -> Path -> Path
 (++) = (&&.)
 
@@ -66,13 +63,17 @@ export
 final : a -> Simulation a
 final x = x !! Value True
 
-export
+-- export
 ||| Simplifying path:   remove tautologies
 ||| Simplifying routes: remove route with unsat path
 ifThenElse : Simulation (Symbolic Bool) -> Simulation (Symbolic a) -> Simulation (Symbolic a) -> List (Simulation (Symbolic a))
 ifThenElse (Value True  !! p1) (v2 !! p2) _          = [ v2 !! p1 ++ p2 ]
 ifThenElse (Value False !! p1) _          (v3 !! p3) = [ v3 !! p1 ++ p3 ]
 ifThenElse (b1 !! p1)             (v2 !! p2) (v3 !! p3) = [ v2 !! p1 ++ p2 ++ b1, v3 !! p1 ++ p3 ++ Not b1 ]
+
+-- ite : Symbolic Bool -> Symbolic a -> Symbolic a -> Symbolic a
+-- ite (Value b) x y = if b then x else y
+-- ite s x y = Ite s x y
 
 ---- Fixities ------------------------------------------------------------------
 
@@ -95,6 +96,7 @@ infixr 3 &&.
 infixr 2 ||.
 
 infixr 1 =>.
+-- infixr 0 **.
 
 ---- Equality ------------------------------------------------------------------
 
@@ -102,53 +104,58 @@ export
 Eq (Token a) where
   (==) (Fresh a k1) (Fresh a k2) = k1 == k2
 
-export
-Eq a => Eq (Symbolic a) where
-  (==) (Value x1)     (Value x2)     = x1 == x2
-  (==) (Symbol z1)    (Symbol z2)    = z1 == z2
-  (==) (Not x1)       (Not x2)       = x1 == x2
-  (==) (x1 &&. y1)    (x2 &&. y2)    = x1 == x2 && y1 == y2
-  (==) (x1 ||. y1)    (x2 ||. y2)    = x1 == x2 && y1 == y2
-  (==) (x1 =>. y1)    (x2 =>. y2)    = x1 == x2 && y1 == y2
-  (==) (x1 <. y1)     (x2 <. y2)     = x1 == x2 && y1 == y2
-  (==) (x1 <=. y1)    (x2 <=. y2)    = x1 == x2 && y1 == y2
-  (==) (x1 ==. y1)    (x2 ==. y2)    = x1 == x2 && y1 == y2
-  (==) (x1 /=. y1)    (x2 /=. y2)    = x1 == x2 && y1 == y2
-  (==) (x1 >=. y1)    (x2 >=. y2)    = x1 == x2 && y1 == y2
-  (==) (Neg x1)       (Neg x2)       = x1 == x2
-  (==) (x1 >. y1)     (x2 >. y2)     = x1 == x2 && y1 == y2
-  (==) (x1 +. y1)     (x2 +. y2)     = x1 == x2 && y1 == y2
-  (==) (x1 -. y1)     (x2 -. y2)     = x1 == x2 && y1 == y2
-  (==) (x1 *. y1)     (x2 *. y2)     = x1 == x2 && y1 == y2
-  (==) (x1 /. y1)     (x2 /. y2)     = x1 == x2 && y1 == y2
-  (==) (x1 %. y1)     (x2 %. y2)     = x1 == x2 && y1 == y2
-  (==) _              _              = False
+mutual
 
-export
-Eq1 Symbolic where
-  eq1 (Value x1)     (Value x2)     = x1 == x2
-  eq1 (Symbol z1)    (Symbol z2)    = z1 == z2
-  eq1 (Not x1)       (Not x2)       = x1 == x2
-  eq1 (x1 &&. y1)    (x2 &&. y2)    = x1 == x2 && y1 == y2
-  eq1 (x1 ||. y1)    (x2 ||. y2)    = x1 == x2 && y1 == y2
-  eq1 (x1 =>. y1)    (x2 =>. y2)    = x1 == x2 && y1 == y2
-  eq1 (x1 <. y1)     (x2 <. y2)     = x1 == x2 && y1 == y2
-  eq1 (x1 <=. y1)    (x2 <=. y2)    = x1 == x2 && y1 == y2
-  eq1 (x1 ==. y1)    (x2 ==. y2)    = x1 == x2 && y1 == y2
-  eq1 (x1 /=. y1)    (x2 /=. y2)    = x1 == x2 && y1 == y2
-  eq1 (x1 >=. y1)    (x2 >=. y2)    = x1 == x2 && y1 == y2
-  eq1 (Neg x1)       (Neg x2)       = x1 == x2
-  eq1 (x1 >. y1)     (x2 >. y2)     = x1 == x2 && y1 == y2
-  eq1 (x1 +. y1)     (x2 +. y2)     = x1 == x2 && y1 == y2
-  eq1 (x1 -. y1)     (x2 -. y2)     = x1 == x2 && y1 == y2
-  eq1 (x1 *. y1)     (x2 *. y2)     = x1 == x2 && y1 == y2
-  eq1 (x1 /. y1)     (x2 /. y2)     = x1 == x2 && y1 == y2
-  eq1 (x1 %. y1)     (x2 %. y2)     = x1 == x2 && y1 == y2
-  eq1 _              _              = False
+  export
+  Eq a => Eq (Symbolic a) where
+    z1 == z2 = eq1 z1 z2
 
--- ite : Symbolic Bool -> Symbolic a -> Symbolic a -> Symbolic a
--- ite (Value b) x y = if b then x else y
--- ite s x y = Ite s x y
+  export
+  Eq1 Symbolic where
+    eq1 (Value x1)     (Value x2)     = x1 == x2
+    eq1 (Symbol z1)    (Symbol z2)    = z1 == z2
+    eq1 (Not x1)       (Not x2)       = eq1 x1 x2
+    eq1 (x1 &&. y1)    (x2 &&. y2)    = eq1 x1 x2 && eq1 y1 y2
+    eq1 (x1 ||. y1)    (x2 ||. y2)    = eq1 x1 x2 && eq1 y1 y2
+    eq1 (x1 =>. y1)    (x2 =>. y2)    = eq1 x1 x2 && eq1 y1 y2
+    eq1 (x1 <. y1)     (x2 <. y2)     = eq1 x1 x2 && eq1 y1 y2
+    eq1 (x1 <=. y1)    (x2 <=. y2)    = eq1 x1 x2 && eq1 y1 y2
+    eq1 (x1 ==. y1)    (x2 ==. y2)    = eq1 x1 x2 && eq1 y1 y2
+    eq1 (x1 /=. y1)    (x2 /=. y2)    = eq1 x1 x2 && eq1 y1 y2
+    eq1 (x1 >=. y1)    (x2 >=. y2)    = eq1 x1 x2 && eq1 y1 y2
+    eq1 (Neg x1)       (Neg x2)       = eq1 x1 x2
+    eq1 (x1 >. y1)     (x2 >. y2)     = eq1 x1 x2 && eq1 y1 y2
+    eq1 (x1 +. y1)     (x2 +. y2)     = eq1 x1 x2 && eq1 y1 y2
+    eq1 (x1 -. y1)     (x2 -. y2)     = eq1 x1 x2 && eq1 y1 y2
+    eq1 (x1 *. y1)     (x2 *. y2)     = eq1 x1 x2 && eq1 y1 y2
+    eq1 (x1 /. y1)     (x2 /. y2)     = eq1 x1 x2 && eq1 y1 y2
+    eq1 (x1 %. y1)     (x2 %. y2)     = eq1 x1 x2 && eq1 y1 y2
+    -- eq1 (Fst x1)       (Fst x2)       = eq1 x1 x2
+    -- eq1 (Snd x1)       (Snd x2)       = eq1 x1 x2
+    --NOTE: We have to explicitly pass `Eq a` and `Eq b` because Idris doesn't know both are the same.
+    -- eq1 (x1 **. y1)    ((**.) @{(eq_a, eq_b)} x2 y2) = eq1 @{eq_a} x1 x2 && eq1 @{eq_b} y1 y2
+    --NOTE: With below enumeration trick we make sure not to forget new cases when added.
+    eq1 (Value x1)     _              = False
+    eq1 (Symbol z1)    _              = False
+    eq1 (Not x1)       _              = False
+    eq1 (x1 &&. y1)    _              = False
+    eq1 (x1 ||. y1)    _              = False
+    eq1 (x1 =>. y1)    _              = False
+    eq1 (x1 <. y1)     _              = False
+    eq1 (x1 <=. y1)    _              = False
+    eq1 (x1 ==. y1)    _              = False
+    eq1 (x1 /=. y1)    _              = False
+    eq1 (x1 >=. y1)    _              = False
+    eq1 (Neg x1)       _              = False
+    eq1 (x1 >. y1)     _              = False
+    eq1 (x1 +. y1)     _              = False
+    eq1 (x1 -. y1)     _              = False
+    eq1 (x1 *. y1)     _              = False
+    eq1 (x1 /. y1)     _              = False
+    eq1 (x1 %. y1)     _              = False
+    -- eq1 (Fst x1)       _              = False
+    -- eq1 (Snd x1)       _              = False
+    -- eq1 (x1 **. y1)    _              = False
 
 ---- Show ----------------------------------------------------------------------
 
@@ -176,3 +183,6 @@ Show a => Show (Symbolic a) where
   show (x *. y)     = show x ++ " * "  ++ show y
   show (x /. y)     = show x ++ " / "  ++ show y
   show (x %. y)     = show x ++ " % "  ++ show y
+  -- show (x **. y)    = "(" ++ show x ++ ", " ++ show y ++ ")"
+  -- show (Fst x)      = "fst " ++ show x
+  -- show (Snd x)      = "snd " ++ show x

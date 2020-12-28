@@ -1,8 +1,10 @@
 module Task.State
 
 import Data.Stream
-import public Data.Basic
+import public Data.Some
 import public Data.Heap
+
+%default total
 
 ---- State ---------------------------------------------------------------------
 
