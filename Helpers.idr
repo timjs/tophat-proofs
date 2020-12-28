@@ -22,17 +22,18 @@ public export
 ---- Refinements ---------------------------------------------------------------
 
 public export
-data Refined : (a : Type) -> (a -> Type) -> Type where
-  Refine : (x : a) -> p x -> Refined a p
-  -- Refined = DPair
+-- data Refined : (a : Type) -> (a -> Type) -> Type where
+--   Refine : (x : a) -> p x -> Refined a p
+Refined : (a : Type) -> (a -> Type) -> Type
+Refined = DPair
 
 public export
 refine : (x : a) -> {auto c : p x} -> Refined a p
-refine x {c} = Refine x c
+refine x {c} = (x ** c)
 
 public export
 unrefine : Refined a p -> a
-unrefine (Refine x _) = x
+unrefine (x ** _) = x
 
 public export
 implicate : (Refined a f -> b) -> ((x : a) -> f x => b)
@@ -40,7 +41,7 @@ implicate g x = g (refine x)
 
 public export
 unimplicate : ((x : a) -> f x => b) -> (Refined a f -> b)
-unimplicate g (Refine x p) = g x
+unimplicate g (x ** p) = g x
 
 ---- Equality of type constructors ---------------------------------------------
 

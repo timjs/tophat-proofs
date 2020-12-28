@@ -135,11 +135,11 @@ decBasic (PairIsBasic x1 y1) (PairIsBasic x2 y2) with (decBasic x1 x2, decBasic 
 neqBasic : Not (IsBasic a = IsBasic b) -> Not (a = b)
 neqBasic f Refl = f Refl
 
-neqRefine : {a1 : Type} -> {a2 : Type} -> {p1 : IsBasic a1} -> {p2 : IsBasic a2} -> Not (p1 = p2) -> Not (Refine a1 p1 = Refine a2 p2)
-neqRefine contra Refl = contra Refl
+neqDPair : {a1 : Type} -> {a2 : Type} -> {p1 : IsBasic a1} -> {p2 : IsBasic a2} -> Not (p1 = p2) -> Not ((a1 ** p1) = (a2 ** p2))
+neqDPair contra Refl = contra Refl
 
 export
 DecEq BasicType where
-  decEq (Refine a1 p1) (Refine a2 p2) with (decBasic p1 p2)
-    decEq (Refine a1 p1) (Refine a1 p1) | Yes Refl = Yes Refl
-    decEq (Refine a1 p1) (Refine a2 p2) | No contra = No (neqRefine contra)
+  decEq (a1 ** p1) (a2 ** p2) with (decBasic p1 p2)
+    decEq (a1 ** p1) (a1 ** p1) | Yes Refl = Yes Refl
+    decEq (a1 ** p1) (a2 ** p2) | No contra = No (neqDPair contra)
