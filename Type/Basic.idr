@@ -1,4 +1,4 @@
-module Data.Basic
+module Type.Basic
 
 import Helpers
 import Data.Symbolic
@@ -15,6 +15,10 @@ data IsBasic : Type -> Type where
   UnitIsBasic   : IsBasic ()
   SymbolIsBasic : IsBasic a -> IsBasic (Symbolic a)
   PairIsBasic   : IsBasic a -> IsBasic b -> IsBasic (a, b)
+
+public export
+BasicType : Type
+BasicType = Refined Type IsBasic
 
 ---- Lemmas --------------------------------------------------------------------
 
@@ -81,11 +85,8 @@ sndNeq cntr Refl = cntr Refl
 bothNeq : {0 p : IsBasic a} -> {0 q : IsBasic b} -> Not (x1 = x') -> Not (y1 = y') -> Not (PairIsBasic x1 y1 = PairIsBasic x' y')
 bothNeq cntr_a cntr_b Refl = cntr_a Refl
 
----- Equality ------------------------------------------------------------------
+---- Decidability --------------------------------------------------------------
 
-infix 6 ??=
-
-public export
 decBasic : (b1 : IsBasic a1) -> (b2 : IsBasic a2) -> Dec (b1 = b2)
 decBasic BoolIsBasic         BoolIsBasic         = Yes Refl
 decBasic BoolIsBasic         IntIsBasic          = No uninhBoolInt
@@ -130,32 +131,14 @@ decBasic (PairIsBasic x1 y1) (PairIsBasic x2 y2) with (decBasic x1 x2, decBasic 
   decBasic (PairIsBasic x1 y1) (PairIsBasic x1 y2) | (Yes Refl, No cntr2) = No ?decBasicPairYesNop
   decBasic (PairIsBasic x1 y1) (PairIsBasic x2 y2) | (No cntr1, No cntr2) = No ?decBasicPairNopNop
 
-export
 neqBasic : Not (IsBasic a = IsBasic b) -> Not (a = b)
 neqBasic f Refl = f Refl
 
-export
-(??=) : a -> {auto p : IsBasic a} -> b -> {auto q : IsBasic b} -> Dec (p = q)
-(??=) _ {p} _ {q} = decBasic p q
-
----- Existentials --------------------------------------------------------------
+neqRefine : {a1 : Type} -> {a2 : Type} -> {p1 : IsBasic a1} -> {p2 : IsBasic a2} -> Not (p1 = p2) -> Not (Refine a1 p1 = Refine a2 p2)
+neqRefine contra Refl = contra Refl
 
 export
-data Some : (Type -> Type) -> Type where
-  Pack : (a : Type) -> IsBasic a -> f a -> Some f
--- Some : (Type -> Type) -> Type
--- Some f = (a : Type ** (IsBasic a, f a))
-
-public export
-some : {a : Type} -> {auto ok : IsBasic a} -> f a -> Some f
-some {a} {ok} v = Pack a ok v
-
-export
-implementation Eq1 f => Eq (Some f) where
-  (==) (Pack a1 b1 v1) (Pack a2 b2 v2) with (decBasic b1 b2) --(a1 ?: a2)
-    (==) (Pack Bool BoolIsBasic v1) (Pack Bool BoolIsBasic v2) | Yes Refl = eq1 v1 v2
-    -- (==) (Pack Int    IntIsBasic    v1) (Pack Int    IntIsBasic    v2) | Yes Refl = eq1 v1 v2
-    -- (==) (Pack Int IntIsBasic v1) (Pack Int IntIsBasic v2) | Yes Refl = eq1 v1 v2
-    -- (==) ((Pack )     UnitIsBasic   v1) ((Pack )     UnitIsBasic   v2) | Yes Refl = eq1 v1 v2
-    (==) (Pack a1 b1 v1) (Pack a1 b1 v2) | Yes Refl = ?eq_some_f_same_a
-    (==) (Pack a1 b1 v1) (Pack a2 b2 e2) | No contr = False
+DecEq BasicType where
+  decEq (Refine a1 p1) (Refine a2 p2) with (decBasic p1 p2)
+    decEq (Refine a1 p1) (Refine a1 p1) | Yes Refl = Yes Refl
+    decEq (Refine a1 p1) (Refine a2 p2) | No contra = No (neqRefine contra)
