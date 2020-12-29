@@ -12,7 +12,10 @@ Guard [] = Fail
 Guard ((b, t) :: ts) = Test b t (Guard ts)
 
 Continue : Task h (Symbolic a') -> (Symbolic a' -> Task h (Symbolic a)) -> Task h (Symbolic a)
-Continue t1 e2 = t1 `Step` \x => Edit Unnamed (Select ["Continue" ~> e2 x])
+Continue t1 e2 = Select Unnamed t1 ["Continue" ~> e2]
+
+Pick : List (Label, Task h (Symbolic a)) -> Task h (Symbolic a)
+Pick cs = Select Unnamed (Done (Value ())) [ (l, const t) | (l, t) <- cs ]
 
 ---- Absolute value ------------------------------------------------------------
 
@@ -42,19 +45,19 @@ requestSubsidy =
     provideDocuments = Edit Unnamed Enter `Pair` Edit Unnamed Enter
 
     companyConfirm : Task None Affirmation
-    companyConfirm = Edit Unnamed (Select [
+    companyConfirm = Pick [
       "Confirm" ~> Done (Value True),
       "Deny" ~> Done (Value False)
-    ])
+    ]
 
     officerApprove : Date -> Date -> Affirmation -> Task None Affirmation
     officerApprove invoiced date confirmed =
-      Edit Unnamed (Select [
+      Pick [
         "Approve" ~> Test (date -. invoiced <. Value 365 &&. confirmed)
           (Done (Value True))
           (Fail),
         "Reject" ~> Done (Value False)
-      ])
+      ]
   in
   (provideDocuments `Pair` companyConfirm) `Step` unwrap >> \(pair, confirmed) =>
   let (expenses, invoiced) = unwrap pair in
@@ -104,10 +107,10 @@ partway this that =
 
 scientist : String -> Ref Triple Availability -> Ref Triple Availability -> Task Triple (Symbolic (String, ()))
 scientist name left right =
-  Edit Unnamed (View (Value name)) `Pair` (Edit Unnamed (Select
+  Edit Unnamed (View (Value name)) `Pair` Pick
     [ "Left"  ~> pickup left right
     , "Right" ~> pickup right left
-    ]))
+    ]
 
 fork0 : Ref Triple Availability
 fork0 = Idx 0
