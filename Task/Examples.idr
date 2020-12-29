@@ -5,7 +5,7 @@ import Task.Symbolic.Syntax
 
 -- These imports are a convenience for the Repl
 import Data.Fuel
-import Task.Simulate
+import Task.Symbolic.Run
 
 Guard : List (Symbolic Bool, Task h (Symbolic a)) -> Task h (Symbolic a)
 Guard [] = Fail
@@ -76,37 +76,54 @@ Nil : Type
 Nil = Symbolic ()
 
 Result : Type
-Result = Symbolic String
+Result = Symbolic Bool
+
+pickup : Ref Triple Availability -> Ref Triple Availability -> Task Triple Nil
+pickup this that =
+  Edit Unnamed (Watch this) `Step` \thisup =>
+  Test thisup (
+    Assign (Value False) this `Step` \_ =>
+    Edit Unnamed (Watch that) `Continue` \thatup =>
+    Test thatup (
+      Assign (Value True) this
+    ) (
+      Fail
+    )
+  ) (
+    Fail
+  )
+
+partway : Ref Triple Availability -> Ref Triple Availability -> Task Triple Nil
+partway this that =
+  Edit Unnamed (Watch that) `Continue` \thatup =>
+  Test thatup (
+    Assign (Value True) this
+  ) (
+    Fail
+  )
+
+scientist : String -> Ref Triple Availability -> Ref Triple Availability -> Task Triple (Symbolic (String, ()))
+scientist name left right =
+  Edit Unnamed (View (Value name)) `Pair` (Edit Unnamed (Select
+    [ "Left"  ~> pickup left right
+    , "Right" ~> pickup right left
+    ]))
+
+fork0 : Ref Triple Availability
+fork0 = Idx 0
+fork1 : Ref Triple Availability
+fork1 = Idx 1
+fork2 : Ref Triple Availability
+fork2 = Idx 2
 
 computerScientists : Task Triple Result
 computerScientists =
-  let
-    pickup : Ref Triple Availability -> Ref Triple Availability -> Task Triple Nil
-    pickup this that =
-      Edit Unnamed (Watch this) `Step` \thisup =>
-      Test thisup (
-        Assign (Value False) this `Step` \_ =>
-        Edit Unnamed (Watch that) `Continue` \thatup =>
-        Test thatup (
-          Assign (Value True) this
-        ) (
-          Fail
-        )
-      ) (
-        Fail
-      )
-    scientist : String -> Ref Triple Availability -> Ref Triple Availability -> Task Triple (Symbolic (String, ()))
-    scientist name left right =
-      Edit Unnamed (View (Value name)) `Pair` (Edit Unnamed (Select
-        [ "Left"  ~> pickup left right
-        , "Right" ~> pickup right left
-        ]))
-    fork0 : Ref Triple Availability
-    fork0 = Idx 0
-    fork1 : Ref Triple Availability
-    fork1 = Idx 1
-    fork2 : Ref Triple Availability
-    fork2 = Idx 2
-  in
   (scientist "Alan" fork0 fork1 `Pair` (scientist "Grace" fork1 fork2 `Pair` scientist "Ada" fork2 fork0)) `Step` \_ =>
-  Done (Value "Full bellies")
+  Done (Value True)
+
+onlyAlan : Task Triple Result
+onlyAlan =
+  Assign (Value False) fork1 `Step` \_ =>
+  Assign (Value False) fork2 `Step` \_ =>
+  (scientist "Alan" fork0 fork1 `Pair` (partway fork1 fork2 `Pair` partway fork2 fork0)) `Step` \_ =>
+  Done (Value True)

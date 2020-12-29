@@ -122,6 +122,24 @@ unwrap (Value (x, y)) = (Value x, Value y)
 unwrap (Symbol z)     = ?unwrapSymbol --(Fst (Symbol z), Snd (Symbol z))
 unwrap (Ite p x y)    = ?unwrapIte
 
+---- Satisfiability ------------------------------------------------------------
+
+export
+satisfiable : Path -> Bool
+satisfiable (Value v)   = v
+satisfiable (Symbol z)  = ?satisfiableSymbol
+satisfiable (Ite p x y) = ?satisfiableIte
+satisfiable (Not x)     = not (satisfiable x)
+satisfiable (x &&. y)   = satisfiable x && satisfiable y
+satisfiable (x ||. y)   = satisfiable x || satisfiable y
+satisfiable (x ==>. y)  = ?satisfiableImply
+satisfiable (x <. y)    = ?satisfiableIntLt
+satisfiable (x <=. y)   = ?satisfiableIntLe
+satisfiable (x ==. y)   = ?satisfiableIntEq
+satisfiable (x /=. y)   = ?satisfiableIntNq
+satisfiable (x >=. y)   = ?satisfiableIntGe
+satisfiable (x >. y)    = ?satisfiableIntGt
+
 ---- Equality ------------------------------------------------------------------
 
 export

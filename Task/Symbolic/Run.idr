@@ -212,3 +212,10 @@ simulate us t s = do
       go (More us') ((t ** n) !! p) is s | Nothing = do
         (n' !! p', i', s') <- drive ((t ** n) !! p) s
         go us' (n' !! p') (i' :: is) s'
+
+---- Hints ---------------------------------------------------------------------
+
+export
+hints : Fuel -> Task h (Symbolic a) -> State h -> (Symbolic a -> Symbolic Bool) -> List (Input (Some Token))
+hints Dry       t s g = []
+hints (More us) t s g = [ head {ok=believe_me ()} is | (is, v !! p) <- simulate us t s ]--, satisfiable (p ++ walk (g v)) ]
