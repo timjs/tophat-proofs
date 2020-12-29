@@ -37,17 +37,17 @@ assert = Assert
 
 ---- Editors
 
-enter : IsBasic a => Show a => Task h a
+enter : IsBasic a => Show a => Eq a => Task h a
 enter = new Enter
 
-update : IsBasic a => Show a => a -> Task h a
+update : IsBasic a => Show a => Eq a => a -> Task h a
 update v = new (Update v)
 
-view : IsBasic a => Show a => a -> Task h a
+view : IsBasic a => Show a => Eq a => a -> Task h a
 view v = new (View v)
 
-select : List (Label, Task h a) -> Task h a
-select ts = new (Select ts)
+select : Task h a -> List (Label, a -> Task h b) -> Task h b
+select t cs = Select Unnamed t cs
 
 ---- Shares
 
@@ -63,7 +63,7 @@ change l = new (Change l)
 infixl 1 <<-
 infixl 1 <<=
 
-(<<-) : IsBasic a => Ref h a -> a -> Task h ()
+(<<-) : IsBasic a => Eq a => Ref h a -> a -> Task h ()
 (<<-) = flip Assign
 
 (<<=) : IsBasic a => Show a => Eq a => Ref h a -> (a -> a) -> Task h ()
@@ -71,13 +71,29 @@ infixl 1 <<=
   x <- watch r
   r <<- f x
 
----- Combinators ---------------------------------------------------------------
+---- Selections ----------------------------------------------------------------
 
-infixl 3 <?>
-infixl 1 >>?
 infixl 1 >>*
 infixl 1 >**
--- infixl 1 >>@
+infixl 1 >>?
+infixl 3 <?>
+
+(>>*) : Task h a -> List (Label, a -> Task h b) -> Task h b
+(>>*) = Select Unnamed
+
+(>**) : Task h a -> List (Label, a -> Bool, a -> Task h b) -> Task h b
+(>**) t1 cs = t1 >>* [ (l, \x => if p x then c x else empty) | (l, p, c) <- cs ]
+
+(>>?) : Task h a -> (a -> Task h b) -> Task h b
+(>>?) t1 e2 = select t1 ["Continue" ~> e2]
+
+pick : List (Label, Task h a) -> Task h a
+pick cs = done () >>* [ (l, const t) | (l, t) <- cs ]
+
+(<?>) : Task h a -> Task h a -> Task h a
+(<?>) t1 t2 = pick ["Left" ~> t1, "Right" ~> t2]
+
+---- Parallels -----------------------------------------------------------------
 
 parallel : List (Task h a) -> Task h (List a)
 parallel [] = pure []
@@ -99,18 +115,6 @@ branch' = foldr pick empty
     pick : (Bool, Task h a) -> Task h a -> Task h a
     pick (b, t) res = Test b t res
 
-(<?>) : Task h a -> Task h a -> Task h a
-(<?>) t1 t2 = select ["Left" ~> t1, "Right" ~> t2]
-
-(>>?) : Task h a -> (a -> Task h b) -> Task h b
-(>>?) t1 e2 = t1 >>= \x => select ["Continue" ~> e2 x]
-
-(>>*) : Task h a -> List (Label, a -> Task h b) -> Task h b
-(>>*) t1 cs = t1 >>= \x => select (map (\(l, c) => l ~> c x) cs)
-
-(>**) : Task h a -> List (Label, a -> Bool, a -> Task h b) -> Task h b
-(>**) t1 cs = t1 >>= \x => select (map (\(l, b, c) => l ~> if b x then c x else empty) cs)
-
 ---- Loops ---------------------------------------------------------------------
 -- Note that adding below combinators to the task language
 -- requires the host language to have recursion!
@@ -123,7 +127,7 @@ forever t1 = t1 >>= \_ => forever t1
 
 covering
 repeat : Task h a -> Task h a
-repeat t1 = t1 >>= \x => select ["Repeat" ~> repeat t1, "Exit" ~> pure x]
+repeat t1 = t1 >>* ["Repeat" ~> \_ => repeat t1, "Exit" ~> \x => pure x]
 
 -- covering
 -- (>>@) : Task h a -> (a -> Task h b) -> Task h b

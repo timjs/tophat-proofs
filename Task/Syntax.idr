@@ -14,19 +14,20 @@ mutual
   public export
   data Task : (h : Shape) -> (a : Type) -> Type where
     ---- Editors
-    Edit   : (n : Name) -> (e : Editor h a) -> Task h a
+    Edit   : (n : Name) -> (d : Editor h a) -> Task h a
+    Select : (n : Name) -> (t1 : Task h a') -> (bs : List (Label, a' -> Task h a)) -> Task h a
     ---- Parallels
     Pair   : (t1 : Task h a) -> (t2 : Task h b) -> Task h (a, b)
     Done   : (v : a) -> Task h a
     Choose : (t1 : Task h a) -> (t2 : Task h a) -> Task h a
-    Test   : Bool -> Task h a -> Task h a -> Task h a
     Fail   : Task h a
     ---- Steps
     Trans  : (f : a' -> a) -> (t2 : Task h a') -> Task h a
     Step   : (t1 : Task h a') -> (e2 : a' -> Task h a) -> Task h a
-    ---- Asserts
-    Assert : (p : Bool) -> Task h Bool
     Repeat : (t1 : Task h a) -> Task h a
+    ---- Asserts
+    Test   : Bool -> Task h a -> Task h a -> Task h a
+    Assert : (p : Bool) -> Task h Bool
     ---- Stores
     -- Share : IsBasic a => a -> Task h (Ref h a)
     Assign : IsBasic a => Eq a => (v : a) -> (r : Ref h a) -> Task h ()
@@ -37,7 +38,6 @@ mutual
     Enter  : IsBasic a => Show a => Eq a => Editor h a  -- Also needs `Show` bacause semantics transforms `Enter` into an `Update`
     Update : IsBasic a => Show a => Eq a => (v : a) -> Editor h a
     View   : IsBasic a => Show a => Eq a => (v : a) -> Editor h a
-    Select : (ts : List (Label, Task h a)) -> Editor h a
     ---- Shared
     Change : IsBasic a => Show a => Eq a => (r : Ref h a) -> Editor h a  -- Needs `Eq` to save in `Pack`
     Watch  : IsBasic a => Show a => Eq a => (r : Ref h a) -> Editor h a
@@ -46,10 +46,11 @@ mutual
 
 public export
 data IsNormal : Task h a -> Type where
-  EditIsNormal   : IsNormal (Edit (Named k) e)
+  EditIsNormal   : IsNormal (Edit (Named k) d)
+  SelectIsNormal : IsNormal t1 -> IsNormal (Select (Named k) t1 ts)
   PairIsNormal   : IsNormal t1 -> IsNormal t2 -> IsNormal (Pair t1 t2)
   DoneIsNormal   : IsNormal (Done v)
   ChooseIsNormal : IsNormal t1 -> IsNormal t2 -> IsNormal (Choose t1 t2)
   FailIsNormal   : IsNormal Fail
-  TransIsNormal  : IsNormal t2 -> IsNormal (Trans f t2)
-  StepIsNormal   : IsNormal t1 -> IsNormal (Step t1 c)
+  TransIsNormal  : IsNormal t2 -> IsNormal (Trans e1 t2)
+  StepIsNormal   : IsNormal t1 -> IsNormal (Step t1 e2)

@@ -37,15 +37,7 @@ DecEq Abstract where
 public export
 data Input v
   = Insert Id v
-  | Option Name Label
-
-public export
-Pick : Id -> Label -> Input v
-Pick k l = Option (Named k) l
-
-public export
-Prepick : Label -> Input v
-Prepick l = Option Unnamed l
+  | Pick Id Label
 
 insertInjective : (Insert k v = Insert k x) -> (v = x)
 insertInjective Refl = Refl
@@ -56,13 +48,13 @@ pickInjective Refl = Refl
 public export
 Eq v => Eq (Input v) where
   (==) (Insert k x) (Insert k' x') = k == k' && x == x'
-  (==) (Option n l) (Option n' l') = n == n' && l == l'
+  (==) (Pick n l)   (Pick n' l')   = n == n' && l == l'
   (==) _            _              = False
 
 public export
 DecEq v => DecEq (Input v) where
   decEq (Insert k x) (Insert k' x') = ?input_decEq_insert
-  decEq (Option n l) (Option n' l') = ?input_decEq_pick
+  decEq (Pick n l)   (Pick n' l')   = ?input_decEq_pick
   decEq _            _              = ?action_decEq_rest
 
 -- -- public export

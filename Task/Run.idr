@@ -19,7 +19,6 @@ data NotApplicable
   | CouldNotChangeRef (Some IsBasic) (Some IsBasic)
   | CouldNotGoTo Label
   | CouldNotFind Label
-  | CouldNotPick
   | CouldNotContinue
   | CouldNotHandle (Input Concrete)
   | CouldNotHandleValue Concrete
@@ -40,12 +39,8 @@ normalise (Step t1 e2) s =
       let t2 = e2 v1
        in if failing t2
         then (stay, s', d') -- N-StepFail
-        else if not $ isNil $ options t2
-          then (stay, s', d') -- N-StepWait
-          --> Note that Idris2 can't prove termination when writing `t2` instead of `e2 v1`, see #493
-          else
-            let (n2', s'', d'') = normalise (e2 v1) s'
-             in (n2', s'', d' ++ d'') -- N-StepCont
+        else let (n2', s'', d'') = normalise (e2 v1) s'
+           in (n2', s'', d' ++ d'') -- N-StepCont
 ---- Choose
 normalise (Choose t1 t2) s =
   let ((t1' ** n1'), s', d') = normalise t1 s
@@ -56,6 +51,14 @@ normalise (Choose t1 t2) s =
        in case value t2' (get s'') of
         Just _ => ((t2' ** n2'), s'', d' ++ d'') -- N-ChooseRight
         Nothing => ((Choose t1' t2' ** ChooseIsNormal n1' n2'), s'', d' ++ d'') -- N-ChooseNone
+---- Select
+normalise (Select Unnamed t1 bs) s =
+  let ((t1' ** n1'), s', d') = normalise t1 s
+      (k, s'') = fresh s'
+   in ((Select (Named k) t1' bs ** SelectIsNormal n1'), s'', d')
+normalise (Select (Named k) t1 bs) s =
+  let ((t1' ** n1'), s', d') = normalise t1 s
+   in ((Select (Named k) t1' bs ** SelectIsNormal n1'), s', d')
 ---- Converge
 normalise (Trans f t2) s =
   let ((t2' ** n2'), s', d') = normalise t2 s
@@ -82,8 +85,9 @@ normalise (Test b t1 t2) s =
     else normalise t2 s
 normalise (Repeat t1) s =
   let ((t1' ** n1'), s', d') = normalise t1 s
-   in ((Step t1' (\x => Edit Unnamed (Select ["Repeat" ~> Repeat t1, "Exit" ~> Done x])) ** StepIsNormal n1'), s', d') -- N-Repeat
-  -- normalise (Step t1 (\x => Edit Unnamed (Select ["Repeat" ~> Repeat t1, "Exit" ~> Done x]))) s <-- Should be equivallent
+      (k, s'') = fresh s'
+   in ((Select (Named k) t1' ["Repeat" ~> \_ => Repeat t1, "Exit" ~> \x => Done x] ** SelectIsNormal n1'), s'', d') -- N-Repeat
+  -- normalise (Select Unnamed t1 ["Repeat" ~> \_ => Repeat t1, "Exit" ~> \x => Done x]) s <-- Should be equivallent
 normalise (Assert p) s =
   ((Done p ** DoneIsNormal), s, []) -- N-Assert
 -- normalise (Share b) s =
@@ -108,49 +112,51 @@ insert (Change @{ok} v) (Value @{ok'} v') s with (decBasic ok ok')
   insert (Change @{ok} l) (Value @{ok'} v') s | No _ = Left $ CouldNotChangeRef (Pack ok') (Pack ok)
 insert (View _) c _ = Left $ CouldNotHandleValue c
 insert (Watch _) c _ = Left $ CouldNotHandleValue c
-insert (Select _) c _ = Left $ CouldNotHandleValue c
 
-public export
-pick : Task h a -> Label -> Either NotApplicable (Task h a)
-pick t@(Edit n (Select ts)) l =
-  case lookup l ts of
-    Just t' => do
-      if (n, l) `elem` options t
-        then Right t'
-        else Left $ CouldNotGoTo l
-    Nothing => Left $ CouldNotFind l
-pick (Trans e1 t2) l =
-  case pick t2 l of
-    Right t' => Right $ Trans e1 t'
-    Left x => Left x
-pick (Step t1 e2) l =
-  case pick t1 l of
-    Right t' => Right $ Step t' e2
-    Left x => Left x
-pick _ _ = Left $ CouldNotPick
+-- public export
+-- pick : Task h a -> Label -> Either NotApplicable (Task h a)
+-- pick t@(Edit n (Select ts)) l =
+--   case lookup l ts of
+--     Just t' => do
+--       if (n, l) `elem` options t
+--         then Right t'
+--         else Left $ CouldNotGoTo l
+--     Nothing => Left $ CouldNotFind l
+-- pick (Trans e1 t2) l =
+--   case pick t2 l of
+--     Right t' => Right $ Trans e1 t'
+--     Left x => Left x
+-- pick (Step t1 e2) l =
+--   case pick t1 l of
+--     Right t' => Right $ Step t' e2
+--     Left x => Left x
+-- pick _ _ = Left $ CouldNotPick
 
 public export
 handle : (t : Task h a) -> IsNormal t => Input Concrete -> State h -> Either NotApplicable (Task h a, State h, Delta h)
----- Unnamed
-handle (Edit Unnamed e) i s =
-  Left $ CouldNotHandle i
 ---- Selections
-handle t@(Edit (Named k) (Select ts)) (Option (Named k') l) s =
+handle (Select (Named k) t1 bs) @{SelectIsNormal n1} (Pick k' l) s =
   case k ?= k' of
-    Yes Refl => case pick t l of
-      Right t' => Right (t', s, []) -- H-Select
-      Left x => Left x
     No _ => Left $ CouldNotMatch (Named k) (Named k')
-handle (Edit (Named k) (Select ts)) i s =
+    Yes Refl => case value t1 (get s) of
+      Nothing => Left $ CouldNotContinue
+      Just v1 => case lookup l bs of
+        Nothing => Left $ CouldNotFind l
+        Just el =>
+          let tl = el v1 in
+          if failing tl
+            then Left $ CouldNotGoTo l
+            else Right (tl, s, []) -- H-Select
+handle (Select (Named _) _ _) i@(Insert _ _) _ =
   Left $ CouldNotHandle i
 ---- Editors
 handle (Edit (Named k) e) (Insert k' c) s =
   case k ?= k' of
+    No _ => Left $ CouldNotMatch (Named k) (Named k')
     Yes Refl => case insert e c s of
       Right (e', s', d') => Right (Edit (Named k) e', s', d') -- H-Edit
       Left x => Left x
-    No _ => Left $ CouldNotMatch (Named k) (Named k')
-handle (Edit (Named k) e) i s =
+handle (Edit (Named _) _) i@(Pick _ _) _ =
   Left $ CouldNotHandle i
 ---- Pass
 handle (Trans e1 t2) @{TransIsNormal n2} i s =
@@ -160,13 +166,7 @@ handle (Trans e1 t2) @{TransIsNormal n2} i s =
 handle (Step t1 e2) @{StepIsNormal n1} i s =
   case handle t1 i s of
     Right (t1', s', d') => Right (Step t1' e2, s', d') -- H-Step
-    Left _ => case i of
-      Option Unnamed l => case value t1 (get s) of
-        Just v1 => case pick (e2 v1) l of
-          Right t2' => Right (t2', s, []) -- H-Preselect
-          Left x => Left x
-        Nothing => Left $ CouldNotContinue
-      _ => Left $ CouldNotPick
+    Left x => Left x
 handle (Pair t1 t2) @{PairIsNormal n1 n2} i s =
   case handle t1 i s of
     Right (t1', s', d') => Right (Pair t1' t2, s', d') -- H-PairFirst
