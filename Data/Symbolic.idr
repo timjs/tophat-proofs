@@ -40,6 +40,7 @@ data Symbolic : Type -> Type where
   -- Fst : (Show a, Show b) => Symbolic (a, b) -> Symbolic a
   -- Snd : (Show a, Show b) => Symbolic (a, b) -> Symbolic b
   -- (**.) : (Eq a, Eq b) => (Show a, Show b) => Symbolic a -> Symbolic b -> Symbolic (a, b)
+  -- (**.) : (Show a, Show b) => Symbolic a -> Symbolic b -> Symbolic (a, b)
   (**.) : Symbolic a -> Symbolic b -> Symbolic (a, b)
 
 ---- Fixities ------------------------------------------------------------------
@@ -112,19 +113,20 @@ export
 min : Symbolic Int -> Symbolic Int -> Symbolic Int
 min x y = Ite (x <=. y) x y
 
----- Wrapping ------------------------------------------------------------------
+---- Grouping ------------------------------------------------------------------
 
 export
--- wrap : (Eq a, Eq b) => (Show a, Show b) => (Symbolic a, Symbolic b) -> Symbolic (a, b)
-wrap : (Symbolic a, Symbolic b) -> Symbolic (a, b)
-wrap (x, y) = x **. y
+-- group : (Eq a, Eq b) => (Show a, Show b) => (Symbolic a, Symbolic b) -> Symbolic (a, b)
+-- group : (Show a, Show b) => (Symbolic a, Symbolic b) -> Symbolic (a, b)
+group : (Symbolic a, Symbolic b) -> Symbolic (a, b)
+group (x, y) = x **. y
 
 export
-unwrap : Symbolic (a, b) -> (Symbolic a, Symbolic b)
-unwrap (x **. y)      = (x, y)
-unwrap (Value (x, y)) = (Value x, Value y)
-unwrap (Symbol z)     = ?unwrapSymbol --(Fst (Symbol z), Snd (Symbol z))
-unwrap (Ite p x y)    = ?unwrapIte
+ungroup : Symbolic (a, b) -> (Symbolic a, Symbolic b)
+ungroup (x **. y)      = (x, y)
+ungroup (Value (x, y)) = (Value x, Value y)
+ungroup (Symbol z)     = ?ungroupSymbol --(Fst (Symbol z), Snd (Symbol z))
+ungroup (Ite p x y)    = ?ungroupIte
 
 ---- Satisfiability ------------------------------------------------------------
 
@@ -149,7 +151,7 @@ satisfiable (x >. y)    = ?satisfiableIntGt
 export
 Eq (Token a) where
   (==) (Fresh a k1) (Fresh a k2) = k1 == k2
-{-
+
 mutual
 
   export
@@ -180,7 +182,8 @@ mutual
     -- eq1 (Fst x1)       (Fst x2)       = eq1 x1 x2
     -- eq1 (Snd x1)       (Snd x2)       = eq1 x1 x2
     --NOTE: We have to explicitly pass `Eq a` and `Eq b` because Idris doesn't know both are the same.
-    eq1 (x1 **. y1)    ((**.) @{(eq_a, eq_b)} x2 y2) = eq1 @{eq_a} x1 x2 && eq1 @{eq_b} y1 y2
+    -- eq1 (x1 **. y1)    ((**.) @{(eq_a, eq_b)} x2 y2) = eq1 @{eq_a} x1 x2 && eq1 @{eq_b} y1 y2
+    eq1 (x1 **. y1)    (x2 **. y2)    = ?eqSymbolicPair
     --NOTE: With below enumeration trick we make sure not to forget new cases when added.
     eq1 (Value x1)     _              = False
     eq1 (Symbol z1)    _              = False
@@ -232,7 +235,6 @@ Show a => Show (Symbolic a) where
   show (x *. y)     = show x ++ " * "  ++ show y
   show (x /. y)     = show x ++ " / "  ++ show y
   show (x %. y)     = show x ++ " % "  ++ show y
-  show (x **. y)    = "(" ++ show x ++ ", " ++ show y ++ ")"
+  show (x **. y)    = ?showSymbolicPair --"(" ++ show x ++ ", " ++ show y ++ ")"
   -- show (Fst x)      = "fst " ++ show x
   -- show (Snd x)      = "snd " ++ show x
--}

@@ -21,7 +21,7 @@ value : (t : Task h a) -> IsNormal t => Heap h -> Maybe a
 value (Edit (Named _) e)     @{EditIsNormal}         s = value' e s
 value (Select (Named _) _ _) @{SelectIsNormal _}     _ = Nothing
 value (Trans f t1)           @{TransIsNormal n1}     s = map f (value t1 s)
-value (Pair t1 t2)           @{PairIsNormal n1 n2}   s = map wrap (value t1 s <&> value t2 s)
+value (Pair t1 t2)           @{PairIsNormal n1 n2}   s = map group (value t1 s <&> value t2 s)
 value (Done v)               @{DoneIsNormal}         _ = Just v
 value (Choose t1 t2)         @{ChooseIsNormal n1 n2} s = value t1 s <|> value t2 s
 value (Fail)                 @{FailIsNormal}         _ = Nothing
@@ -101,30 +101,24 @@ watching (Step t1 _)     @{StepIsNormal n1}      = watching t1
 
 {- UI is not needed for simulation.
    Removing it helps in not adding a Show constraint on Tuple in Data.Symbolic.
-
+-}
 public export
 ui' : Id -> Editor h a -> Heap h -> String
 ui' k (Enter)     _ = "[ ](" ++ show k ++ ")"
 ui' k (Update b)  _ = "[ " ++ show b ++ " ](" ++ show k ++ ")"
 ui' _ (View b)    _ = "[ " ++ show b ++ " ]"
-ui' k (Select ts) _ = "{ " ++ show (map fst ts) ++ " }(" ++ show k ++ ")"
 ui' k (Change r)  s = "[ " ++ show (read r s) ++ " ](" ++ show k ++ ")"
 ui' _ (Watch r)   s = "[ " ++ show (read r s) ++ " ]"
 
 ui : (t : Task h a) -> IsNormal t => Heap h -> String
-ui (Edit (Named k) e) @{EditIsNormal}         s = ui' k e s
-ui (Trans _ t2)       @{TransIsNormal n2}     s = ui t2 s
-ui (Pair t1 t2)       @{PairIsNormal n1 n2}   s = ui t1 s ++ "<&>" ++ ui t2 s
-ui (Done _)           @{DoneIsNormal}         _ = "[ ? ]"
-ui (Choose t1 t2)     @{ChooseIsNormal n1 n2} s = ui t1 s ++ "<|>" ++ ui t2 s
-ui (Fail)             @{FailIsNormal}         _ = "fail"
-ui (Step t1 e2)       @{StepIsNormal n1}      s = ui t1 s ++ ">>={" ++ show ls ++ "}"
-  where
-    ls : List Label
-    ls = case value t1 s of
-      Nothing => []
-      Just v1 => labels (e2 v1)
--}
+ui (Edit (Named k) e)       @{EditIsNormal}         s = ui' k e s
+ui (Select (Named k) t1 bs) @{SelectIsNormal n1}    s = ui t1 s ++ ">>?{ " ++ show (map fst bs) ++ " }(" ++ show k ++ ")"
+ui (Trans _ t2)             @{TransIsNormal n2}     s = ui t2 s
+ui (Pair t1 t2)             @{PairIsNormal n1 n2}   s = ui t1 s ++ "<&>" ++ ui t2 s
+ui (Done _)                 @{DoneIsNormal}         _ = "[ .. ]"
+ui (Choose t1 t2)           @{ChooseIsNormal n1 n2} s = ui t1 s ++ "<|>" ++ ui t2 s
+ui (Fail)                   @{FailIsNormal}         _ = "fail"
+ui (Step t1 e2)             @{StepIsNormal n1}      s = ui t1 s
 
 ---- Inputs --------------------------------------------------------------------
 

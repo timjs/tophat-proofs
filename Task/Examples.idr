@@ -59,8 +59,8 @@ requestSubsidy =
         "Reject" ~> Done (Value False)
       ]
   in
-  (provideDocuments `Pair` companyConfirm) `Step` unwrap >> \(pair, confirmed) =>
-  let (expenses, invoiced) = unwrap pair in
+  (provideDocuments `Pair` companyConfirm) `Step` ungroup >> \(pair, confirmed) =>
+  let (expenses, invoiced) = ungroup pair in
   officerApprove invoiced today confirmed `Step` \approved =>
   let subsidy = ite approved (min (Value 600) (expenses /. Value 10)) (Value 0) in
   Assert (subsidy >=. Value 0 ==>. confirmed) `Step` \_ =>
