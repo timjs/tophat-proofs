@@ -1,6 +1,7 @@
 module Data.Heap
 
 import Helpers
+import Data.Fin
 import Decidable.Equality
 
 %default total
@@ -14,30 +15,46 @@ data Shape
     None
   | ||| Single integer
     Single
+  | ||| Three bools
+    Triple
 
 Uninhabited (None = Single) where
+  uninhabited Refl impossible
+Uninhabited (None = Triple) where
+  uninhabited Refl impossible
+Uninhabited (Single = Triple) where
   uninhabited Refl impossible
 
 export
 DecEq Shape where
   decEq (None)   (None)   = Yes Refl
   decEq (None)   (Single) = No absurd
+  decEq (None)   (Triple) = No absurd
   decEq (Single) (Single) = Yes Refl
   decEq (Single) (None)   = No (negEqSym absurd)
+  decEq (Single) (Triple) = No absurd
+  decEq (Triple) (Triple) = Yes Refl
+  decEq (Triple) (None)   = No (negEqSym absurd)
+  decEq (Triple) (Single) = No (negEqSym absurd)
 
 ||| References into the heap
 public export
 data Ref : Shape -> Type -> Type where
   ||| Location of single integer
   Loc : Ref Single Int
-
-export
-Eq1 (Ref h) where
-  eq1 Loc Loc = True
+  ||| Index of one of three bools
+  Idx : Fin 3 -> Ref Triple Bool
 
 export
 Eq (Ref h a) where
-  Loc == Loc = True
+  Loc    == Loc    = True
+  Idx i1 == Idx i2 = i1 == i2
+  Loc    == _      = False
+  Idx _  == _      = False
+
+export
+Eq1 (Ref h) where
+  eq1 a b = a == b
 
 ||| Concrete heap of certain shape
 public export
@@ -45,15 +62,23 @@ data Heap : Shape -> Type where
   ||| Empty heap
   Empty : Heap None
   ||| Value of single integer
-  Saved : Int -> Heap Single
+  Saved1 : Int -> Heap Single
+  |||
+  Saved3 : Bool -> Bool -> Bool -> Heap Triple
 
 export
 read : Ref h t -> Heap h -> t
-read Loc (Saved x) = x
+read Loc     (Saved1 x)     = x
+read (Idx 0) (Saved3 x _ _) = x
+read (Idx 1) (Saved3 _ y _) = y
+read (Idx 2) (Saved3 _ _ z) = z
 
 export
 write : t -> Ref h t -> Heap h -> Heap h
-write y Loc (Saved x) = Saved y
+write x' Loc (Saved1 x) = Saved1 x'
+write x' (Idx 0) (Saved3 x y z) = (Saved3 x' y  z )
+write y' (Idx 1) (Saved3 x y z) = (Saved3 x  y' z )
+write z' (Idx 2) (Saved3 x y z) = (Saved3 x  y  z')
 
 {-
 ---- Types ---------------------------------------------------------------------
