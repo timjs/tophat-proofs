@@ -97,7 +97,6 @@ normalise (Assert b !! p) s =
 normalise (Assign v r !! p) s = do
   let s' = modify (write v r) s
   done ((Done (Value ()) ** DoneIsNormal) !! p, s', [Pack r])
-normalise _ _ = empty
 
 ---- Handling ------------------------------------------------------------------
 
@@ -150,16 +149,24 @@ handle t@((Step t1 e2 ** StepIsNormal n1) !! p) s =
           done (t2' !! p, Option Unnamed l', s, []) -- H-Preselect
         Nothing => empty
    in fst <|> snd
-handle t@((Pair t1 t2 ** PairIsNormal n1 n2) !! p) s = do
+handle t@((Pair t1 t2 ** PairIsNormal n1 n2) !! p) s =
   --KNOW: use the same state!
-  (t1' !! p1, i1, s1, d1) <- handle (assert_smaller t ((t1 ** n1) !! p)) s -- H-PairFirst
-  (t2' !! p2, i2, s2, d2) <- handle (assert_smaller t ((t2 ** n2) !! p)) s -- H-PairSecond
-  done (Pair t1' t2 !! p1, i1, s1, d1) <|> done (Pair t1 t2' !! p2, i2, s2, d2)
-handle t@((Choose t1 t2 ** ChooseIsNormal n1 n2) !! p) s = do
+  let fst = do
+        (t1' !! p1, i1, s1, d1) <- handle (assert_smaller t ((t1 ** n1) !! p)) s -- H-PairFirst
+        done (Pair t1' t2 !! p1, i1, s1, d1)
+      snd = do
+        (t2' !! p2, i2, s2, d2) <- handle (assert_smaller t ((t2 ** n2) !! p)) s -- H-PairSecond
+        done (Pair t1 t2' !! p2, i2, s2, d2)
+   in fst <|> snd
+handle t@((Choose t1 t2 ** ChooseIsNormal n1 n2) !! p) s =
   --KNOW: use the same state!
-  (t1' !! p1, i1, s1, d1) <- handle (assert_smaller t ((t1 ** n1) !! p)) s -- H-ChooseFirst
-  (t2' !! p2, i2, s2, d2) <- handle (assert_smaller t ((t2 ** n2) !! p)) s -- H-ChooseSecond
-  done (Choose t1' t2 !! p1, i1, s1, d1) <|> done (Choose t1 t2' !! p2, i2, s2, d2)
+  let fst = do
+        (t1' !! p1, i1, s1, d1) <- handle (assert_smaller t ((t1 ** n1) !! p)) s -- H-ChooseFirst
+        done (Choose t1' t2 !! p1, i1, s1, d1)
+      snd = do
+        (t2' !! p2, i2, s2, d2) <- handle (assert_smaller t ((t2 ** n2) !! p)) s -- H-ChooseSecond
+        done (Choose t1 t2' !! p2, i2, s2, d2)
+   in fst <|> snd
 ---- Rest
 handle ((Done _ ** DoneIsNormal) !! p) i = empty
 handle ((Fail ** FailIsNormal) !! p) i = empty
