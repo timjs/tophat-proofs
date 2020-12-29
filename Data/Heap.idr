@@ -1,7 +1,8 @@
 module Data.Heap
 
 import Helpers
-import Data.Fin
+import public Data.Fin
+import Data.Symbolic
 import Decidable.Equality
 
 %default total
@@ -15,7 +16,7 @@ data Shape
     None
   | ||| Single integer
     Single
-  | ||| Three bools
+  | ||| Three symbolic bools
     Triple
 
 Uninhabited (None = Single) where
@@ -43,7 +44,7 @@ data Ref : Shape -> Type -> Type where
   ||| Location of single integer
   Loc : Ref Single Int
   ||| Index of one of three bools
-  Idx : Fin 3 -> Ref Triple Bool
+  Idx : Fin 3 -> Ref Triple (Symbolic Bool)
 
 export
 Eq (Ref h a) where
@@ -64,7 +65,7 @@ data Heap : Shape -> Type where
   ||| Value of single integer
   Saved1 : Int -> Heap Single
   |||
-  Saved3 : Bool -> Bool -> Bool -> Heap Triple
+  Saved3 : Symbolic Bool -> Symbolic Bool -> Symbolic Bool -> Heap Triple
 
 export
 read : Ref h t -> Heap h -> t

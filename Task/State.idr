@@ -1,6 +1,7 @@
 module Task.State
 
 import Data.Stream
+import Data.Symbolic
 import public Data.Some
 import public Data.Heap
 
@@ -15,6 +16,10 @@ State h = (Stream Nat, Heap h)
 export
 empty : State None
 empty = (iterate S 0, Empty)
+
+export
+bools : State Triple
+bools = (iterate S 0, Saved3 (Value True) (Value True) (Value True))
 
 export
 get : State h -> Heap h

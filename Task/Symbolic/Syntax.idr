@@ -23,8 +23,8 @@ mutual
     Test   : Symbolic Bool -> Task h (Symbolic a) -> Task h (Symbolic a) -> Task h (Symbolic a)
     Fail   : Task h a
     ---- Steps
-    Trans  : (f : Symbolic a' -> Symbolic a) -> (t2 : Task h (Symbolic a')) -> Task h (Symbolic a) --<< f : Symbolic a' -> Simulation (Symbolic a)
-    Step   : (t1 : Task h (Symbolic a')) -> (c : Symbolic a' -> Task h (Symbolic a)) -> Task h (Symbolic a) --<< c : Symbolic a' -> Simulation (Task h (Symbolic a))
+    Trans  : (e1 : Symbolic a' -> Symbolic a) -> (t2 : Task h (Symbolic a')) -> Task h (Symbolic a) --<< f : Symbolic a' -> Simulation (Symbolic a)
+    Step   : (t1 : Task h (Symbolic a')) -> (e2 : Symbolic a' -> Task h (Symbolic a)) -> Task h (Symbolic a) --<< c : Symbolic a' -> Simulation (Task h (Symbolic a))
     ---- Asserts
     Assert : (p : Symbolic Bool) -> Task h (Symbolic Bool)
     Repeat : (t1 : Task h (Symbolic a)) -> Task h (Symbolic a)

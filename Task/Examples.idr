@@ -11,6 +11,9 @@ Guard : List (Symbolic Bool, Task h (Symbolic a)) -> Task h (Symbolic a)
 Guard [] = Fail
 Guard ((b, t) :: ts) = Test b t (Guard ts)
 
+Continue : Task h (Symbolic a') -> (Symbolic a' -> Task h (Symbolic a)) -> Task h (Symbolic a)
+Continue t1 e2 = t1 `Step` \x => Edit Unnamed (Select ["Continue" ~> e2 x])
+
 ---- Absolute value ------------------------------------------------------------
 
 absolute : Task None (Symbolic Int)
@@ -72,22 +75,38 @@ Availability = Symbolic Bool
 Nil : Type
 Nil = Symbolic ()
 
--- computerScientists : Task Triple String
--- computerScientists =
---   let
---     pickup : Ref Triple Availability -> Ref Triple Availability -> Task Triple Nil
---     pickup this that =
---       Edit Unnamed (Watch this) `Step` \thisup =>
---       ite thisup (
---         Assign this (Value False) `Step` \_ =>
---         Edit Unnamed (Watch that) `Step` \thatup =>
---         ite thatup (
---           Assign this (Value True)
---         ) (
---           Fail
---         )
---       ) (
---         Fail
---       )
---   in
---   ?h
+Result : Type
+Result = Symbolic String
+
+computerScientists : Task Triple Result
+computerScientists =
+  let
+    pickup : Ref Triple Availability -> Ref Triple Availability -> Task Triple Nil
+    pickup this that =
+      Edit Unnamed (Watch this) `Step` \thisup =>
+      Test thisup (
+        Assign (Value False) this `Step` \_ =>
+        Edit Unnamed (Watch that) `Continue` \thatup =>
+        Test thatup (
+          Assign (Value True) this
+        ) (
+          Fail
+        )
+      ) (
+        Fail
+      )
+    scientist : String -> Ref Triple Availability -> Ref Triple Availability -> Task Triple (Symbolic (String, ()))
+    scientist name left right =
+      Edit Unnamed (View (Value name)) `Pair` (Edit Unnamed (Select
+        [ "Left"  ~> pickup left right
+        , "Right" ~> pickup right left
+        ]))
+    fork0 : Ref Triple Availability
+    fork0 = Idx 0
+    fork1 : Ref Triple Availability
+    fork1 = Idx 1
+    fork2 : Ref Triple Availability
+    fork2 = Idx 2
+  in
+  (scientist "Alan" fork0 fork1 `Pair` (scientist "Grace" fork1 fork2 `Pair` scientist "Ada" fork2 fork0)) `Step` \_ =>
+  Done (Value "Full bellies")
