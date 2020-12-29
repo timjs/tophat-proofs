@@ -1,0 +1,19 @@
+# Only Alan partial dining problem
+
+## Task
+
+```idris
+Task.Examples> initialise onlyAlan start State.bools |> map (\((t**n), p, s) => ui t (get s))
+
+(["Alan"] <&> ([..] >>?{Left, Right}_1)) <&> ([False] >>?{Continue}_3) <&> ([True] >>?{Continue}_5)
+```
+
+## Hints
+
+```idris
+Task.Examples> hints (limit 6) onlyAlan State.bools id
+
+(Pick 5 "Continue", ((((Value True &&. Value True) &&. Value True) &&. Value True) &&. Value True) &&. Value True)
+(Pick 5 "Continue", ((((Value True &&. Value True) &&. Value True) &&. Value True) &&. Value True) &&. Value True)
+(Pick 5 "Continue", ((((Value True &&. Value True) &&. Value True) &&. Value True) &&. Value True) &&. Value True)
+```

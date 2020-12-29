@@ -104,19 +104,20 @@ watching (Step t1 _)     @{StepIsNormal n1}      = watching t1
 -}
 public export
 ui' : Id -> Editor h a -> Heap h -> String
-ui' k (Enter)     _ = "[ ](" ++ show k ++ ")"
-ui' k (Update b)  _ = "[ " ++ show b ++ " ](" ++ show k ++ ")"
-ui' _ (View b)    _ = "[ " ++ show b ++ " ]"
-ui' k (Change r)  s = "[ " ++ show (read r s) ++ " ](" ++ show k ++ ")"
-ui' _ (Watch r)   s = "[ " ++ show (read r s) ++ " ]"
+ui' k (Enter)     _ = "[]_" ++ show k
+ui' k (Update b)  _ = "[" ++ show b ++ "]_" ++ show k
+ui' _ (View b)    _ = "[" ++ show b ++ "]"
+ui' k (Change r)  s = "[" ++ show (read r s) ++ "]_" ++ show k
+ui' _ (Watch r)   s = "[" ++ show (read r s) ++ "]"
 
+public export
 ui : (t : Task h a) -> IsNormal t => Heap h -> String
 ui (Edit (Named k) e)       @{EditIsNormal}         s = ui' k e s
-ui (Select (Named k) t1 bs) @{SelectIsNormal n1}    s = ui t1 s ++ ">>?{ " ++ show (map fst bs) ++ " }(" ++ show k ++ ")"
+ui (Select (Named k) t1 bs) @{SelectIsNormal n1}    s = "(" ++ ui t1 s ++ " >>?{" ++ concat (intersperse ", " (map fst bs)) ++ "}_" ++ show k ++ ")"
 ui (Trans _ t2)             @{TransIsNormal n2}     s = ui t2 s
-ui (Pair t1 t2)             @{PairIsNormal n1 n2}   s = ui t1 s ++ "<&>" ++ ui t2 s
-ui (Done _)                 @{DoneIsNormal}         _ = "[ .. ]"
-ui (Choose t1 t2)           @{ChooseIsNormal n1 n2} s = ui t1 s ++ "<|>" ++ ui t2 s
+ui (Pair t1 t2)             @{PairIsNormal n1 n2}   s = "(" ++ ui t1 s ++ " <&> " ++ ui t2 s ++ ")"
+ui (Done _)                 @{DoneIsNormal}         _ = "[..]"
+ui (Choose t1 t2)           @{ChooseIsNormal n1 n2} s = "(" ++ ui t1 s ++ " <|> " ++ ui t2 s ++ ")"
 ui (Fail)                   @{FailIsNormal}         _ = "fail"
 ui (Step t1 e2)             @{StepIsNormal n1}      s = ui t1 s
 

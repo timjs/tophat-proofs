@@ -207,6 +207,7 @@ simulate us t s = do
 ---- Hints ---------------------------------------------------------------------
 
 export
-hints : Fuel -> Task h (Symbolic a) -> State h -> (Symbolic a -> Symbolic Bool) -> List (Input (Some Token))
+partial -- Due to pattern match on input list, but we know it has elements :-P
+hints : Fuel -> Task h (Symbolic a) -> State h -> (Symbolic a -> Symbolic Bool) -> List (Input (Some Token), Path)
 hints Dry       t s g = []
-hints (More us) t s g = [ head {ok=believe_me ()} is | (is, p, v) <- simulate us t s, satisfiable (p ++ walk (g v)) ]
+hints (More us) t s g = [ (i, p') | (i :: is, p, v) <- simulate us t s, let p' = p ++ walk (g v), satisfiable p' ]

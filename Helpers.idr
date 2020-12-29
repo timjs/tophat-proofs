@@ -120,11 +120,16 @@ notFalseIsTrue {b = False} nope = absurd (nope Refl)
 ---- Operators -----------------------------------------------------------------
 
 infixr 0 ~>
+infixl 1 |>
 infixr 9 >>
 
 public export
 (~>) : a -> b -> (a, b)
 (~>) x y = (x, y)
+
+public export
+(|>) : a -> (a -> b) -> b
+(|>) x f = f x
 
 public export
 (>>) : (a -> b) -> (b -> c) -> (a -> c)
