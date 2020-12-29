@@ -1,7 +1,7 @@
-module Task.Observe
+module Task.Symbolic.Observe
 
 import Helpers
-import Task.Syntax
+import Task.Symbolic.Syntax
 import Task.Input
 
 %default total
@@ -21,7 +21,7 @@ public export
 value : (t : Task h a) -> IsNormal t => Heap h -> Maybe a
 value (Edit (Named _) e) @{EditIsNormal}         s = value' e s
 value (Trans f t1)       @{TransIsNormal n1}     s = map f (value t1 s)
-value (Pair t1 t2)       @{PairIsNormal n1 n2}   s = value t1 s <&> value t2 s
+value (Pair t1 t2)       @{PairIsNormal n1 n2}   s = map wrap (value t1 s <&> value t2 s)
 value (Done v)           @{DoneIsNormal}         _ = Just v
 value (Choose t1 t2)     @{ChooseIsNormal n1 n2} s = value t1 s <|> value t2 s
 value (Fail)             @{FailIsNormal}         _ = Nothing

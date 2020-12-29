@@ -5,8 +5,8 @@ import Data.Fuel
 import Data.List
 import Data.Symbolic
 import Task.Input
-import Task.Syntax
-import Task.Observe
+import Task.Symbolic.Syntax
+import Task.Symbolic.Observe
 
 %default total
 
@@ -101,18 +101,18 @@ normalise (Assign v r !! p) s = do
 ---- Handling ------------------------------------------------------------------
 
 public export
-insert : Editor h (Symbolic b) -> State h -> List (Editor h (Symbolic b), Some Token, State h, Delta h)
+insert : Editor h (Symbolic a) -> State h -> List (Editor h (Symbolic a), Some Token, State h, Delta h)
 insert (Enter) s = do
   let (z, s') = fresh s
-  let z' = Fresh b z
+  let z' = Fresh a z
   done (Update (Symbol z'), Pack z', s', Prelude.Nil)
 insert (Update _) s = do
   let (z, s') = fresh s
-  let z' = Fresh b z
+  let z' = Fresh a z
   done (Update (Symbol z'), Pack z', s', Prelude.Nil)
 insert (Change r) s = do
   let (z, s') = fresh s
-  let z' = Fresh b z
+  let z' = Fresh a z
   done (Change r, Pack z', modify (write (Symbol z') r) s', [Pack r])
 insert (View _) _ = empty
 insert (Watch _) _ = empty

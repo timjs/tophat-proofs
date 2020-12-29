@@ -1,7 +1,7 @@
 module Task.Examples
 
 import Helpers
-import Task.Syntax
+import Task.Symbolic.Syntax
 
 -- These imports are a convenience for the Repl
 import Data.Fuel
@@ -63,3 +63,31 @@ requestSubsidy =
   Assert (subsidy <=. Value 600) `Step` \_ =>
   Assert (Not approved ==>. subsidy ==. Value 0) `Step` \_ =>
   Edit Unnamed (View subsidy)
+
+---- Computer scientists -------------------------------------------------------
+
+Availability : Type
+Availability = Symbolic Bool
+
+Nil : Type
+Nil = Symbolic ()
+
+-- computerScientists : Task Triple String
+-- computerScientists =
+--   let
+--     pickup : Ref Triple Availability -> Ref Triple Availability -> Task Triple Nil
+--     pickup this that =
+--       Edit Unnamed (Watch this) `Step` \thisup =>
+--       ite thisup (
+--         Assign this (Value False) `Step` \_ =>
+--         Edit Unnamed (Watch that) `Step` \thatup =>
+--         ite thatup (
+--           Assign this (Value True)
+--         ) (
+--           Fail
+--         )
+--       ) (
+--         Fail
+--       )
+--   in
+--   ?h

@@ -138,10 +138,11 @@ mutual
   Eq1 Symbolic where
     eq1 (Value x1)     (Value x2)     = x1 == x2
     eq1 (Symbol z1)    (Symbol z2)    = z1 == z2
+    eq1 (Ite p1 x1 y1) (Ite p2 x2 y2) = eq1 p1 p2 && eq1 x1 x2 && eq1 y1 y2
     eq1 (Not x1)       (Not x2)       = eq1 x1 x2
     eq1 (x1 &&. y1)    (x2 &&. y2)    = eq1 x1 x2 && eq1 y1 y2
     eq1 (x1 ||. y1)    (x2 ||. y2)    = eq1 x1 x2 && eq1 y1 y2
-    eq1 (x1 ==>. y1)    (x2 ==>. y2)    = eq1 x1 x2 && eq1 y1 y2
+    eq1 (x1 ==>. y1)   (x2 ==>. y2)   = eq1 x1 x2 && eq1 y1 y2
     eq1 (x1 <. y1)     (x2 <. y2)     = eq1 x1 x2 && eq1 y1 y2
     eq1 (x1 <=. y1)    (x2 <=. y2)    = eq1 x1 x2 && eq1 y1 y2
     eq1 (x1 ==. y1)    (x2 ==. y2)    = eq1 x1 x2 && eq1 y1 y2
@@ -162,9 +163,10 @@ mutual
     eq1 (Value x1)     _              = False
     eq1 (Symbol z1)    _              = False
     eq1 (Not x1)       _              = False
+    eq1 (Ite p1 x1 y1) _              = False
     eq1 (x1 &&. y1)    _              = False
     eq1 (x1 ||. y1)    _              = False
-    eq1 (x1 ==>. y1)    _              = False
+    eq1 (x1 ==>. y1)   _              = False
     eq1 (x1 <. y1)     _              = False
     eq1 (x1 <=. y1)    _              = False
     eq1 (x1 ==. y1)    _              = False
@@ -180,6 +182,7 @@ mutual
     -- eq1 (Fst x1)       _              = False
     -- eq1 (Snd x1)       _              = False
     eq1 (x1 **. y1)    _              = False
+
 ---- Show ----------------------------------------------------------------------
 
 export
@@ -190,10 +193,11 @@ export
 Show a => Show (Symbolic a) where
   show (Value x)    = show x
   show (Symbol z)   = show z
+  show (Ite p x y)  = "if " ++ show p ++ " then " ++ show x ++ " else " ++ show y
   show (Not x)      = "not " ++ show x
   show (x &&. y)    = show x ++ " && " ++ show y
   show (x ||. y)    = show x ++ " || " ++ show y
-  show (x ==>. y)    = show x ++ " => " ++ show y
+  show (x ==>. y)   = show x ++ " ==> " ++ show y
   show (x <. y)     = show x ++ " < "  ++ show y
   show (x <=. y)    = show x ++ " <= " ++ show y
   show (x ==. y)    = show x ++ " == " ++ show y
