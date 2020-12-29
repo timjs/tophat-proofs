@@ -20,6 +20,23 @@ public export
 BasicType : Type
 BasicType = Refined Type IsBasic
 
+---- Equality ------------------------------------------------------------------
+
+export
+Eq (IsBasic a) where
+  BoolIsBasic         == BoolIsBasic         = True
+  IntIsBasic          == IntIsBasic          = True
+  StringIsBasic       == StringIsBasic       = True
+  UnitIsBasic         == UnitIsBasic         = True
+  (SymbolIsBasic x1)  == (SymbolIsBasic x2)  = x1 == x2
+  (PairIsBasic x1 y1) == (PairIsBasic x2 y2) = x1 == x2 && y1 == y2
+  BoolIsBasic         == _                   = False
+  IntIsBasic          == _                   = False
+  StringIsBasic       == _                   = False
+  UnitIsBasic         == _                   = False
+  (SymbolIsBasic x)   == _                   = False
+  (PairIsBasic x y)   == _                   = False
+
 ---- Lemmas --------------------------------------------------------------------
 
 uninhBoolInt : Not (BoolIsBasic = IntIsBasic)

@@ -16,14 +16,14 @@ mutual
     ---- Editors
     Edit   : (n : Name) -> (e : Editor h a) -> Task h a
     ---- Parallels
-    Pair   : (t1 : Task h a) -> (t2 : Task h b) -> Task h (a, b) --<<
+    Pair   : (t1 : Task h a) -> (t2 : Task h b) -> Task h (a, b)
     Done   : (v : a) -> Task h a
     Choose : (t1 : Task h a) -> (t2 : Task h a) -> Task h a
     Test   : Bool -> Task h a -> Task h a -> Task h a
     Fail   : Task h a
     ---- Steps
-    Trans  : (f : a' -> a) -> (t2 : Task h a') -> Task h a --<< f : Symbolic a' -> Simulation a
-    Step   : (t1 : Task h a') -> (e2 : a' -> Task h a) -> Task h a --<< c : Symbolic a' -> Simulation (Task h a)
+    Trans  : (f : a' -> a) -> (t2 : Task h a') -> Task h a
+    Step   : (t1 : Task h a') -> (e2 : a' -> Task h a) -> Task h a
     ---- Asserts
     Assert : (p : Bool) -> Task h Bool
     Repeat : (t1 : Task h a) -> Task h a
