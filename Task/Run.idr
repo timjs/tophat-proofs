@@ -4,26 +4,12 @@ import Helpers
 import Data.Fuel
 import Data.List
 import Data.Symbolic
+import Task.Error
 import Task.Input
 import Task.Syntax
 import Task.Observe
 
 %default total
-
----- Errors --------------------------------------------------------------------
-
-export
-data NotApplicable
-  = CouldNotMatch Name Name
-  | CouldNotChangeVal (Some IsBasic) (Some IsBasic)
-  | CouldNotChangeRef (Some IsBasic) (Some IsBasic)
-  | CouldNotGoTo Label
-  | CouldNotFind Label
-  | CouldNotContinue
-  | CouldNotHandle (Input Concrete)
-  | CouldNotHandleValue Concrete
-  | ToFewInputs
-  | ToManyInputs (List (Input Concrete))
 
 ---- Normalisation -------------------------------------------------------------
 
@@ -39,7 +25,9 @@ normalise (Step t1 e2) s =
       let t2 = e2 v1
        in if failing t2
         then (stay, s', d') -- N-StepFail
-        else let (n2', s'', d'') = normalise (e2 v1) s'
+        else
+          --NOTE: Idris2 can't prove termination when writing `t2` instead of `e2 v1`, see #493
+          let (n2', s'', d'') = normalise (e2 v1) s'
            in (n2', s'', d' ++ d'') -- N-StepCont
 ---- Choose
 normalise (Choose t1 t2) s =
@@ -137,7 +125,6 @@ handle : (t : Task h a) -> IsNormal t => Input Concrete -> State h -> Either Not
 ---- Selections
 handle (Select (Named k) t1 bs) @{SelectIsNormal n1} (Pick k' l) s =
   case k ?= k' of
-    No _ => Left $ CouldNotMatch (Named k) (Named k')
     Yes Refl => case value t1 (get s) of
       Nothing => Left $ CouldNotContinue
       Just v1 => case lookup l bs of
@@ -147,13 +134,18 @@ handle (Select (Named k) t1 bs) @{SelectIsNormal n1} (Pick k' l) s =
           if failing tl
             then Left $ CouldNotGoTo l
             else Right (tl, s, []) -- H-Select
-handle (Select (Named _) _ _) i@(Insert _ _) _ =
-  Left $ CouldNotHandle i
+    No _ => case handle t1 (Pick k' l) s of
+      Right (t1', s', d') => Right (Select (Named k) t1' bs, s', d')
+      Left x => Left x
+handle (Select (Named k) t1 bs) @{SelectIsNormal n1} (Insert k' v) s =
+  case handle t1 (Insert k' v) s of
+    Right (t1', s', d') => Right (Select (Named k) t1' bs, s', d')
+    Left x => Left x
 ---- Editors
-handle (Edit (Named k) e) (Insert k' c) s =
+handle (Edit (Named k) e) (Insert k' v) s =
   case k ?= k' of
     No _ => Left $ CouldNotMatch (Named k) (Named k')
-    Yes Refl => case insert e c s of
+    Yes Refl => case insert e v s of
       Right (e', s', d') => Right (Edit (Named k) e', s', d') -- H-Edit
       Left x => Left x
 handle (Edit (Named _) _) i@(Pick _ _) _ =

@@ -32,27 +32,27 @@ value (Step _ _)             @{StepIsNormal _}       _ = Nothing
 mutual
   public export
   failing' : Editor h a -> Bool
-  failing' (Enter)     = False
-  failing' (Update _)  = False
-  failing' (View _)    = False
-  failing' (Change _)  = False
-  failing' (Watch _)   = False
+  failing' (Enter)    = False
+  failing' (Update _) = False
+  failing' (View _)   = False
+  failing' (Change _) = False
+  failing' (Watch _)  = False
 
   public export
   failing : Task h a -> Bool
-  failing (Edit _ e)     = failing' e
-  failing (Select _ t1 _)= failing t1 --XXX: how about `all (failing . snd) ts`?
-  failing (Trans _ t2)   = failing t2
-  failing (Pair t1 t2)   = failing t1 && failing t2
-  failing (Done _)       = False
-  failing (Choose t1 t2) = failing t1 && failing t2
-  failing (Fail)         = True
-  failing (Step t1 _)    = failing t1
-  failing (Repeat t1)    = failing t1
-  failing (Test b t1 t2) = failing t1 && failing t2
-  failing (Assert _)     = False
-  -- failing (Share _)      = False
-  failing (Assign _ _)   = False
+  failing (Edit _ e)      = failing' e
+  failing (Select _ t1 _) = failing t1 --XXX: how about `all (failing . snd) ts`?
+  failing (Trans _ t2)    = failing t2
+  failing (Pair t1 t2)    = failing t1 && failing t2
+  failing (Done _)        = False
+  failing (Choose t1 t2)  = failing t1 && failing t2
+  failing (Fail)          = True
+  failing (Step t1 _)     = failing t1
+  failing (Repeat t1)     = failing t1
+  failing (Test b t1 t2)  = failing t1 && failing t2
+  failing (Assert _)      = False
+  -- failing (Share _)       = False
+  failing (Assign _ _)    = False
 
 ---- Watching ------------------------------------------------------------------
 
@@ -66,14 +66,14 @@ watching' (Watch r)  = [Pack r]
 
 public export
 watching : (t : Task h a) -> IsNormal t => Delta h
-watching (Edit _ e)     @{EditIsNormal}         = watching' e
-watching (Select _ t1 _)@{SelectIsNormal n1}    = watching t1
-watching (Trans _ t2)   @{TransIsNormal n2}     = watching t2
-watching (Pair t1 t2)   @{PairIsNormal n1 n2}   = watching t1 ++ watching t2
-watching (Done _)       @{DoneIsNormal}         = []
-watching (Choose t1 t2) @{ChooseIsNormal n1 n2} = watching t1 ++ watching t2
-watching (Fail)         @{FailIsNormal}         = []
-watching (Step t1 _)    @{StepIsNormal n1}      = watching t1
+watching (Edit _ e)      @{EditIsNormal}         = watching' e
+watching (Select _ t1 _) @{SelectIsNormal n1}    = watching t1
+watching (Trans _ t2)    @{TransIsNormal n2}     = watching t2
+watching (Pair t1 t2)    @{PairIsNormal n1 n2}   = watching t1 ++ watching t2
+watching (Done _)        @{DoneIsNormal}         = []
+watching (Choose t1 t2)  @{ChooseIsNormal n1 n2} = watching t1 ++ watching t2
+watching (Fail)          @{FailIsNormal}         = []
+watching (Step t1 _)     @{StepIsNormal n1}      = watching t1
 
 ---- Options & Labels ----------------------------------------------------------
 

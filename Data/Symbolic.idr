@@ -88,6 +88,10 @@ data Simulation : Type -> Type where
 infix 0 !!
 
 export
+start : Path
+start = Value True
+
+export
 final : a -> Simulation a
 final x = x !! Value True
 
