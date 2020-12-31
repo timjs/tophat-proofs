@@ -49,7 +49,6 @@ mutual
   failing (Fail)          = True
   failing (Step t1 _)     = failing t1
   failing (Repeat t1)     = failing t1
-  failing (Test b t1 t2)  = failing t1 && failing t2
   failing (Assert _)      = False
   -- failing (Share _)       = False
   failing (Assign _ _)    = False

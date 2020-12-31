@@ -67,10 +67,6 @@ normalise (Edit Unnamed e) s =
 normalise (Edit (Named k) e) s =
   ((Edit (Named k) e ** EditIsNormal), s, []) -- N-Editor
 ---- Resolve
-normalise (Test b t1 t2) s =
-  if b
-    then normalise t1 s
-    else normalise t2 s
 normalise (Repeat t1) s =
   let ((t1' ** n1'), s', d') = normalise t1 s
       (k, s'') = fresh s'

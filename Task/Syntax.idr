@@ -26,7 +26,6 @@ mutual
     Step   : (t1 : Task h a') -> (e2 : a' -> Task h a) -> Task h a
     Repeat : (t1 : Task h a) -> Task h a
     ---- Asserts
-    Test   : Bool -> Task h a -> Task h a -> Task h a
     Assert : (p : Bool) -> Task h Bool
     ---- Stores
     -- Share : IsBasic a => a -> Task h (Ref h a)
