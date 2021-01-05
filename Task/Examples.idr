@@ -7,22 +7,21 @@ import Task.Symbolic.Syntax
 import Data.Fuel
 import Task.Symbolic.Run
 
-Guard : List (Symbolic Bool, Task h (Symbolic a)) -> Task h (Symbolic a)
-Guard [] = Fail
-Guard ((b, t) :: ts) = Test b t (Guard ts)
-
-Continue : Task h (Symbolic a') -> (Symbolic a' -> Task h (Symbolic a)) -> Task h (Symbolic a)
-Continue t1 e2 = Select Unnamed t1 ["Continue" ~> e2]
-
-Pick : List (Label, Task h (Symbolic a)) -> Task h (Symbolic a)
-Pick cs = Select Unnamed (Done (Value ())) [ (l, const t) | (l, t) <- cs ]
-
 ---- Absolute value ------------------------------------------------------------
 
 absolute : Task None (Symbolic Int)
 absolute =
   Edit Unnamed Enter `Step` \x =>
   Guard [ x >. Value 0 ~> Edit Unnamed (View x) ]
+
+---- Selection -----------------------------------------------------------------
+
+selection : Task None (Symbolic Int)
+selection =
+  Select Unnamed (Edit Unnamed Enter)
+    [ "Ok" ~> \x => Edit Unnamed (View x)
+    , "Fail" ~> const Fail
+    ]
 
 ---- Subsidy request -----------------------------------------------------------
 
@@ -45,14 +44,14 @@ requestSubsidy =
     provideDocuments = Edit Unnamed Enter `Pair` Edit Unnamed Enter
 
     companyConfirm : Task None Affirmation
-    companyConfirm = Pick [
+    companyConfirm = Pick Unnamed [
       "Confirm" ~> Done (Value True),
       "Deny" ~> Done (Value False)
     ]
 
     officerApprove : Date -> Date -> Affirmation -> Task None Affirmation
     officerApprove invoiced date confirmed =
-      Pick [
+      Pick Unnamed [
         "Approve" ~> Test (date -. invoiced <. Value 365 &&. confirmed)
           (Done (Value True))
           (Fail),
@@ -107,7 +106,7 @@ partway this that =
 
 scientist : String -> Ref Triple Availability -> Ref Triple Availability -> Task Triple (Symbolic (String, ()))
 scientist name left right =
-  Edit Unnamed (View (Value name)) `Pair` Pick
+  Edit Unnamed (View (Value name)) `Pair` Pick Unnamed
     [ "Left"  ~> pickup left right
     , "Right" ~> pickup right left
     ]
