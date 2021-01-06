@@ -12,11 +12,19 @@ import public Task.State
 
 mutual
 
+  ||| In the symbolic case we need to save:
+  ||| * the labels of a `Select`ion, so we know which to pick,
+  |||   otherwise we would need to implement a symbolic `lookup` function,
+  |||   which is possible in a complete symbolic host language, but we don't have that;
+  ||| * the predicate of a `Branch`,
+  |||   because we'd like to store this in the path condition.
+  ||| * the predicate of an `Assert`ion,
+  |||   because we'd like to store this in the path condition.
   public export
   data Task : (h : Shape) -> (a : Type) -> Type where
     ---- Editors
     Edit   : (n : Name) -> (e : Editor h (Symbolic a)) -> Task h (Symbolic a)
-    Select : (n : Name) -> (t1 : Task h (Symbolic a')) -> (bs : List (Label, (Symbolic a') -> Task h (Symbolic a))) -> Task h (Symbolic a)
+    Select : (n : Name) -> (t1 : Task h (Symbolic a')) -> (bs : List (Label, Symbolic a' -> Task h (Symbolic a))) -> Task h (Symbolic a)
     ---- Parallels
     Pair   : (t1 : Task h (Symbolic a)) -> (t2 : Task h (Symbolic b)) -> Task h (Symbolic (a, b))
     Done   : (v : Symbolic a) -> Task h (Symbolic a)
@@ -25,7 +33,6 @@ mutual
     ---- Steps
     Trans  : (e1 : Symbolic a' -> Symbolic a) -> (t2 : Task h (Symbolic a')) -> Task h (Symbolic a) --<< f : Symbolic a' -> Simulation (Symbolic a)
     Step   : (t1 : Task h (Symbolic a')) -> (e2 : Symbolic a' -> Task h (Symbolic a)) -> Task h (Symbolic a) --<< c : Symbolic a' -> Simulation (Task h (Symbolic a))
-    Repeat : (t1 : Task h (Symbolic a)) -> Task h (Symbolic a)
     ---- Asserts
     Test   : Symbolic Bool -> Task h (Symbolic a) -> Task h (Symbolic a) -> Task h (Symbolic a)
     Assert : (p : Symbolic Bool) -> Task h (Symbolic Bool)
@@ -43,6 +50,33 @@ mutual
     Change : IsBasic a => Show a => Eq a => (r : Ref h (Symbolic a)) -> Editor h (Symbolic a)  -- Needs `Eq` to save in `Pack`
     Watch  : IsBasic a => Show a => Eq a => (r : Ref h (Symbolic a)) -> Editor h (Symbolic a)
 
+public export
+Guard : List (Symbolic Bool, Task h (Symbolic a)) -> Task h (Symbolic a)
+Guard [] = Fail
+Guard ((b, t) :: ts) = Test b t (Guard ts)
+
+-- public export
+-- Select : Name -> Task h (Symbolic a) -> List (Label, Symbolic a -> Task h (Symbolic b)) -> Task h (Symbolic b)
+-- Select n t1 cs =
+--   (t1 `Pair` Edit n Enter) `Step` ungroup >> \(x, l) =>
+--   case lookupBy (==.) l [ (Value l, c) | (l, c) <- cs ] of
+--     Just t' => t' x
+--     Nothing => Fail
+
+public export
+Pick : Name -> List (Label, Task h (Symbolic a)) -> Task h (Symbolic a)
+Pick n ts =
+  Select n (Done (Value ())) [ (l, const t) | (l, t) <- ts ]
+
+public export
+Continue : Task h (Symbolic a') -> (Symbolic a' -> Task h (Symbolic a)) -> Task h (Symbolic a)
+Continue t1 e2 = Select Unnamed t1 ["Continue" ~> e2]
+
+public export
+covering
+Repeat : Task h (Symbolic a) -> Task h (Symbolic a)
+Repeat t1 = Select Unnamed t1 ["Repeat" ~> \_ => Repeat t1, "Exit" ~> \x => Done x]
+
 ---- Normalised predicate ------------------------------------------------------
 
 public export
@@ -55,3 +89,7 @@ data IsNormal : Task h a -> Type where
   FailIsNormal   : IsNormal Fail
   TransIsNormal  : IsNormal t2 -> IsNormal (Trans f t2)
   StepIsNormal   : IsNormal t1 -> IsNormal (Step t1 c)
+
+public export
+PickIsNormal : IsNormal (Pick (Named k) cs)
+PickIsNormal = SelectIsNormal DoneIsNormal

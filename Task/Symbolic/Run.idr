@@ -75,10 +75,10 @@ normalise (Test b t1 t2) p s =
         (n2', p2', s', d') <- normalise t2 p s
         done (n2', p2' ++ walk (Not b), s', d')
    in fst <|> snd
-normalise (Repeat t1) p s = do
-  ((t1' ** n1'), p', s', d') <- normalise t1 p s
-  let (k, s'') = fresh s'
-  done ((Select (Named k) t1' ["Repeat" ~> \_ => Repeat t1, "Exit" ~> \x => Done x] ** SelectIsNormal n1'), p', s'', d') -- N-Repeat
+-- normalise (Repeat t1) p s = do
+--   ((t1' ** n1'), p', s', d') <- normalise t1 p s
+--   let (k, s'') = fresh s'
+--   done ((Select (Named k) t1' ["Repeat" ~> \_ => Repeat t1, "Exit" ~> \x => Done x] ** SelectIsNormal n1'), p', s'', d') -- N-Repeat
 normalise (Assert b) p s =
   done ((Done b ** DoneIsNormal), p ++ walk b, s, []) -- N-Assert
 -- normalise (Share b) p s = do
@@ -106,13 +106,6 @@ insert (Change r) s = do
   done (Change r, Pack z', modify (write (Symbol z') r) s', [Pack r])
 insert (View _) _ = empty
 insert (Watch _) _ = empty
-
--- public export
--- pick : Task h a -> List (Label, Task h a)
--- pick (Edit n (Select ts)) = [ (l', t')          | (l', t') <- ts, not (failing t') ]
--- pick (Trans e1 t2)        = [ (l', Trans e1 t') | (l', t') <- pick t2 ]
--- pick (Step t1 e2)         = [ (l', Step t' e2)  | (l', t') <- pick t1 ]
--- pick _                    = []
 
 public export
 handle : (t : Task h a) -> IsNormal t => Path -> State h -> List (Task h a, Path, Input (Some Token), State h, Delta h)
