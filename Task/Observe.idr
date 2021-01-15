@@ -2,7 +2,7 @@ module Task.Observe
 
 import Helpers
 import Task.Syntax
-import Task.Input
+import public Task.Input
 
 %default total
 
@@ -29,29 +29,20 @@ value (Step _ _)             @{StepIsNormal _}       _ = Nothing
 
 ---- Failing -------------------------------------------------------------------
 
-mutual
-  public export
-  failing' : Editor h a -> Bool
-  failing' (Enter)    = False
-  failing' (Update _) = False
-  failing' (View _)   = False
-  failing' (Change _) = False
-  failing' (Watch _)  = False
-
-  public export
-  failing : Task h a -> Bool
-  failing (Edit _ e)      = failing' e
-  -- failing (Select _ t1 _) = failing t1 --XXX: how about `all (failing . snd) ts`?
-  failing (Trans _ t2)    = failing t2
-  failing (Pair t1 t2)    = failing t1 && failing t2
-  failing (Done _)        = False
-  failing (Choose t1 t2)  = failing t1 && failing t2
-  failing (Fail)          = True
-  failing (Step t1 _)     = failing t1
-  -- failing (Repeat t1)     = failing t1
-  -- failing (Assert _)      = False
-  -- failing (Share _)       = False
-  failing (Assign _ _)    = False
+public export
+failing : Task h a -> Bool
+failing (Edit _ e)      = False
+-- failing (Select _ t1 _) = failing t1 --XXX: how about `all (failing . snd) ts`?
+failing (Trans _ t2)    = failing t2
+failing (Pair t1 t2)    = failing t1 && failing t2
+failing (Done _)        = False
+failing (Choose t1 t2)  = failing t1 && failing t2
+failing (Fail)          = True
+failing (Step t1 _)     = failing t1
+-- failing (Repeat t1)     = failing t1
+-- failing (Assert _)      = False
+-- failing (Share _)       = False
+failing (Assign _ _)    = False
 
 ---- Watching ------------------------------------------------------------------
 
@@ -108,7 +99,7 @@ public export
 inputs : (t : Task h a) -> IsNormal t => List (Input Abstract)
 inputs (Edit (Named k) e)       @{EditIsNormal}         = inputs' k e
 -- inputs (Select (Named k) t1 bs) @{SelectIsNormal n1}    s = inputs t1 s ++ case value t1 s of
---   Just v1 => [ Pick k l | (l, e) <- bs, not (failing (e v1)) ]
+--   Just v1 => [ Decide k l | (l, e) <- bs, not (failing (e v1)) ]
 --   Nothing => []
 inputs (Trans _ t2)             @{TransIsNormal n2}     = inputs t2
 inputs (Pair t1 t2)             @{PairIsNormal n1 n2}   = inputs t1 ++ inputs t2

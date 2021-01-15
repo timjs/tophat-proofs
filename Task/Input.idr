@@ -37,27 +37,27 @@ DecEq Abstract where
 public export
 data Input v
   = Insert Id v
-  | Pick Id Label
+  | Decide Id Label
 
 insertInjective : (Insert k v = Insert k x) -> (v = x)
 insertInjective Refl = Refl
 
-pickInjective : (Pick n l = Pick n x) -> (l = x)
+pickInjective : (Decide k l = Decide k x) -> (l = x)
 pickInjective Refl = Refl
 
 public export
 Eq v => Eq (Input v) where
   (==) (Insert k x) (Insert k' x') = k == k' && x == x'
-  (==) (Pick n l)   (Pick n' l')   = n == n' && l == l'
+  (==) (Decide k l) (Decide k' l') = k == k' && l == l'
   (==) _            _              = False
 
 public export
 DecEq v => DecEq (Input v) where
   decEq (Insert k x) (Insert k' x') = ?input_decEq_insert
-  decEq (Pick n l)   (Pick n' l')   = ?input_decEq_pick
+  decEq (Decide n l) (Decide n' l') = ?input_decEq_pick
   decEq _            _              = ?action_decEq_rest
 
--- -- public export
--- -- dummify : Input Concrete -> Input Abstract
--- -- dummify (Insert k (Value {a'} _)) = Insert k (Symbolic')
--- -- dummify (Option n l)              = Option n l
+public export
+dummify : Input Concrete -> Input Abstract
+dummify (Insert k (Value {a'} v)) = Insert k (Dummy a')
+dummify (Decide k l)              = Decide k l

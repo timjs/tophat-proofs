@@ -100,7 +100,7 @@ insert (Watch _) c _ = Left $ CouldNotHandleValue c
 public export
 handle : (t : Task h a) -> IsNormal t => Input Concrete -> State h -> Either NotApplicable (Task h a, State h, Delta h)
 ---- Selections
--- handle (Select (Named k) t1 bs) @{SelectIsNormal n1} (Pick k' l) s =
+-- handle (Select (Named k) t1 bs) @{SelectIsNormal n1} (Decide k' l) s =
 --   case k ?= k' of
 --     Yes Refl => case value t1 (get s) of
 --       Nothing => Left $ CouldNotContinue
@@ -111,7 +111,7 @@ handle : (t : Task h a) -> IsNormal t => Input Concrete -> State h -> Either Not
 --           if failing tl
 --             then Left $ CouldNotGoTo l
 --             else Right (tl, s, []) -- H-Select
---     No _ => case handle t1 (Pick k' l) s of
+--     No _ => case handle t1 (Decide k' l) s of
 --       Right (t1', s', d') => Right (Select (Named k) t1' bs, s', d')
 --       Left x => Left x
 -- handle (Select (Named k) t1 bs) @{SelectIsNormal n1} (Insert k' v) s =
@@ -125,7 +125,7 @@ handle (Edit (Named k) e) (Insert k' v) s =
     Yes Refl => case insert e v s of
       Right (e', s', d') => Right (Edit (Named k) e', s', d') -- H-Edit
       Left x => Left x
-handle (Edit (Named _) _) i@(Pick _ _) _ =
+handle (Edit (Named _) _) i@(Decide _ _) _ =
   Left $ CouldNotHandle i
 ---- Pass
 handle (Trans e1 t2) @{TransIsNormal n2} i s =
