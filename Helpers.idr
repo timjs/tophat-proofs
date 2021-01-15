@@ -207,6 +207,29 @@ isItRight : (v : Either e a) -> Dec (IsRight v)
 isItRight (Right _) = Yes ItIsRight
 isItRight (Left  _) = No absurd
 
+public export
+data IsLeft : Either e a -> Type where
+  ItIsLeft : IsLeft (Left x)
+
+public export
+Uninhabited (IsLeft (Right e)) where
+  uninhabited ItIsLeft impossible
+
+public export
+isItLeft : (v : Either e a) -> Dec (IsLeft v)
+isItLeft (Left  _) = Yes ItIsLeft
+isItLeft (Right _) = No absurd
+
+public export
+notRightIsLeft : {v : Either e a} -> Not (IsRight v) -> IsLeft v
+notRightIsLeft {v=Left  x} cntr = ItIsLeft
+notRightIsLeft {v=Right x} cntr = void (cntr ItIsRight)
+
+public export
+notLeftIsRight : {v : Either e a} -> Not (IsLeft v) -> IsRight v
+notLeftIsRight {v=Left  x} cntr = void (cntr ItIsLeft)
+notLeftIsRight {v=Right x} cntr = ItIsRight
+
 ---- IsItNil or IsItCons -------------------------------------------------------
 
 public export
