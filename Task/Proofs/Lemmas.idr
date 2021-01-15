@@ -5,7 +5,7 @@ import Data.List
 import Data.List.Elem
 import Data.List.Quantifiers
 import Data.Maybe
-import Task.Observations
+import Task.Observe
 
 %default total
 
