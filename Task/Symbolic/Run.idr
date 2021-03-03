@@ -111,17 +111,20 @@ public export
 handle : (t : Task h a) -> IsNormal t => Path -> State h -> List (Task h a, Path, Input (Some Token), State h, Delta h)
 ---- Selections
 handle (Select (Named k) t1 bs) @{SelectIsNormal n1} p s =
-  let fst = case value t1 (get s) of
-        Nothing => empty
-        Just v1 => do
-          (l, e) <- bs
-          let t' = e v1
-          guard $ not (failing t')
-          done (t', p, Pick k l, s, []) -- H-Select
-      snd = do
-        (t1', p', i', s', d') <- handle t1 p s
-        done (Select (Named k) t1' bs, p', i', s', d')
-  in fst <|> snd
+  fst <|> snd
+  where -- Need to help type-inferencer here...
+    fst : List (Task h a, Path, Input (Some Token), State h, Delta h)
+    fst = case value t1 (get s) of
+      Nothing => empty
+      Just v1 => do
+        (l, e) <- bs
+        let t' = e v1
+        guard $ not (failing t')
+        done (t', p, Decide k l, s, []) -- H-Select
+    snd : List (Task h a, Path, Input (Some Token), State h, Delta h)
+    snd = do
+      (t1', p', i', s', d') <- handle t1 p s
+      done (Select (Named k) t1' bs, p', i', s', d')
 ---- Editors
 handle (Edit (Named k) e) p s = do
   (e', z', s', d') <- insert e s

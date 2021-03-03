@@ -42,8 +42,8 @@ data Input v
 insertInjective : (Insert k v = Insert k x) -> (v = x)
 insertInjective Refl = Refl
 
-pickInjective : (Decide k l = Decide k x) -> (l = x)
-pickInjective Refl = Refl
+decideInjective : (Decide k l = Decide k x) -> (l = x)
+decideInjective Refl = Refl
 
 public export
 Eq v => Eq (Input v) where
@@ -54,7 +54,7 @@ Eq v => Eq (Input v) where
 public export
 DecEq v => DecEq (Input v) where
   decEq (Insert k x) (Insert k' x') = ?input_decEq_insert
-  decEq (Decide n l) (Decide n' l') = ?input_decEq_pick
+  decEq (Decide n l) (Decide n' l') = ?input_decEq_decide
   decEq _            _              = ?action_decEq_rest
 
 public export

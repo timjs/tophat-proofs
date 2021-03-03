@@ -51,9 +51,9 @@ mutual
     Watch  : IsBasic a => Show a => Eq a => (r : Ref h (Symbolic a)) -> Editor h (Symbolic a)
 
 public export
-Guard : List (Symbolic Bool, Task h (Symbolic a)) -> Task h (Symbolic a)
-Guard [] = Fail
-Guard ((b, t) :: ts) = Test b t (Guard ts)
+Branch : List (Symbolic Bool, Task h (Symbolic a)) -> Task h (Symbolic a)
+Branch [] = Fail
+Branch ((b, t) :: ts) = Test b t (Branch ts)
 
 -- public export
 -- Select : Name -> Task h (Symbolic a) -> List (Label, Symbolic a -> Task h (Symbolic b)) -> Task h (Symbolic b)

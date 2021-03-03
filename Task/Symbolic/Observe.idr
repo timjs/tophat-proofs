@@ -109,7 +109,7 @@ public export
 inputs : (t : Task h a) -> IsNormal t => Heap h -> List (Input Abstract)
 inputs (Edit (Named k) e)       @{EditIsNormal}         s = inputs' k e
 inputs (Select (Named k) t1 bs) @{SelectIsNormal n1}    s = inputs t1 s ++ case value t1 s of
-  Just v1 => [ Pick k l | (l, e) <- bs, not (failing (e v1)) ]
+  Just v1 => [ Decide k l | (l, e) <- bs, not (failing (e v1)) ]
   Nothing => []
 inputs (Trans _ t2)             @{TransIsNormal n2}     s = inputs t2 s
 inputs (Pair t1 t2)             @{PairIsNormal n1 n2}   s = inputs t1 s ++ inputs t2 s

@@ -12,7 +12,7 @@ import Task.Symbolic.Run
 absolute : Task None (Symbolic Int)
 absolute =
   Edit Unnamed Enter `Step` \x =>
-  Guard [ x >. Value 0 ~> Edit Unnamed (View x) ]
+  Branch [ x >. Value 0 ~> Edit Unnamed (View x) ]
 
 ---- Selection -----------------------------------------------------------------
 
@@ -58,8 +58,9 @@ requestSubsidy =
         "Reject" ~> Done (Value False)
       ]
   in
-  (provideDocuments `Pair` companyConfirm) `Step` ungroup >> \(pair, confirmed) =>
-  let (expenses, invoiced) = ungroup pair in
+  (provideDocuments `Pair` companyConfirm) `Step` \pair =>
+  let (inner, confirmed) = ungroup pair in
+  let (expenses, invoiced) = ungroup inner in
   officerApprove invoiced today confirmed `Step` \approved =>
   let subsidy = ite approved (min (Value 600) (expenses /. Value 10)) (Value 0) in
   Assert (subsidy >=. Value 0 ==>. confirmed) `Step` \_ =>
