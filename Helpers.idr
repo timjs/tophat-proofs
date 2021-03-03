@@ -4,6 +4,7 @@ import public Decidable.Equality
 import public Control.Monoidal
 -- import public Data.Bool
 import public Data.Either
+import public Data.Fin
 import public Data.List
 import public Data.Maybe
 
