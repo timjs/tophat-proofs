@@ -105,15 +105,11 @@ parallel' = foldr (\t,res => t <&> res >>= \(x, xs) => pure (x :: xs)) (pure [])
 choose : List (Task h a) -> Task h a
 choose = foldr (<|>) empty
 
-branch : List (Bool, Task h a) -> Task h a
-branch [] = empty
-branch ((b, t) :: ts) = Test b t (branch ts)
-
-branch' : List (Bool, Task h a) -> Task h a
-branch' = foldr pick empty
-  where
-    pick : (Bool, Task h a) -> Task h a -> Task h a
-    pick (b, t) res = Test b t res
+-- branch' : List (Bool, Task h a) -> Task h a
+-- branch' = foldr pick empty
+--   where
+--     pick : (Bool, Task h a) -> Task h a -> Task h a
+--     pick (b, t) res = Test b t res
 
 ---- Loops ---------------------------------------------------------------------
 -- Note that adding below combinators to the task language

@@ -42,9 +42,9 @@ mutual
     Watch  : IsBasic a => Show a => Eq a => (r : Ref h a) -> Editor h a
 
 public export
-Guard : List (Bool, Task h a) -> Task h a
-Guard [] = Fail
-Guard ((b, t) :: ts) = if b then t else Guard ts
+Branch : List (Bool, Task h a) -> Task h a
+Branch [] = Fail
+Branch ((b, t) :: ts) = if b then t else Branch ts
 
 public export
 Select : Name -> Task h a -> List (Label, a -> Task h b) -> Task h b
