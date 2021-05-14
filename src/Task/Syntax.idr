@@ -15,7 +15,7 @@ mutual
   data Task : (h : Shape) -> (a : Type) -> Type where
     ---- Editors
     Edit   : (n : Name) -> (d : Editor h a) -> Task h a
-    -- Select : (n : Name) -> (t1 : Task h a') -> (bs : List (Label, a' -> Task h a)) -> Task h a
+    Select : (n : Name) -> (t1 : Task h a') -> (bs : List (Label, a' -> Task h a)) -> Task h a
     ---- Parallels
     Pair   : (t1 : Task h a) -> (t2 : Task h b) -> Task h (a, b)
     Done   : (v : a) -> Task h a
@@ -46,13 +46,13 @@ Branch : List (Bool, Task h a) -> Task h a
 Branch [] = Fail
 Branch ((b, t) :: ts) = if b then t else Branch ts
 
-public export
-Select : Name -> Task h a -> List (Label, a -> Task h b) -> Task h b
-Select n t1 cs =
-  (t1 `Pair` Edit n Enter) `Step` \(x, l) =>
-  case lookup l cs of
-    Just t' => t' x
-    Nothing => Fail
+-- public export
+-- Select : Name -> Task h a -> List (Label, a -> Task h b) -> Task h b
+-- Select n t1 cs =
+--   (t1 `Pair` Edit n Enter) `Step` \(x, l) =>
+--   case lookup l cs of
+--     Just t' => t' x
+--     Nothing => Fail
 
 public export
 Pick : Name -> List (Label, Task h a) -> Task h a
@@ -77,6 +77,7 @@ Repeat t1 = Select Unnamed t1 ["Repeat" ~> \_ => Repeat t1, "Exit" ~> \x => Done
 public export
 data IsNormal : Task h a -> Type where
   EditIsNormal   : IsNormal (Edit (Named k) d)
+  SelectIsNormal : IsNormal t1 -> IsNormal (Select (Named k) t1 cs)
   PairIsNormal   : IsNormal t1 -> IsNormal t2 -> IsNormal (Pair t1 t2)
   DoneIsNormal   : IsNormal (Done v)
   ChooseIsNormal : IsNormal t1 -> IsNormal t2 -> IsNormal (Choose t1 t2)
@@ -84,9 +85,9 @@ data IsNormal : Task h a -> Type where
   TransIsNormal  : IsNormal t2 -> IsNormal (Trans e1 t2)
   StepIsNormal   : IsNormal t1 -> IsNormal (Step t1 e2)
 
-public export
-SelectIsNormal : IsNormal t1 -> IsNormal (Select (Named k) t1 cs)
-SelectIsNormal n1 = StepIsNormal (PairIsNormal n1 EditIsNormal)
+-- public export
+-- SelectIsNormal : IsNormal t1 -> IsNormal (Select (Named k) t1 cs)
+-- SelectIsNormal n1 = StepIsNormal (PairIsNormal n1 EditIsNormal)
 
 public export
 PickIsNormal : IsNormal (Pick (Named k) cs)

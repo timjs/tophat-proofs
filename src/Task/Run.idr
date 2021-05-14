@@ -40,13 +40,13 @@ normalise (Choose t1 t2) s =
         Just _ => ((t2' ** n2'), s'', d' ++ d'') -- N-ChooseRight
         Nothing => ((Choose t1' t2' ** ChooseIsNormal n1' n2'), s'', d' ++ d'') -- N-ChooseNone
 ---- Select
--- normalise (Select Unnamed t1 bs) s =
---   let ((t1' ** n1'), s', d') = normalise t1 s
---       (k, s'') = fresh s'
---    in ((Select (Named k) t1' bs ** SelectIsNormal n1'), s'', d')
--- normalise (Select (Named k) t1 bs) s =
---   let ((t1' ** n1'), s', d') = normalise t1 s
---    in ((Select (Named k) t1' bs ** SelectIsNormal n1'), s', d')
+normalise (Select Unnamed t1 bs) s =
+  let ((t1' ** n1'), s', d') = normalise t1 s
+      (k, s'') = fresh s'
+   in ((Select (Named k) t1' bs ** SelectIsNormal n1'), s'', d')
+normalise (Select (Named k) t1 bs) s =
+  let ((t1' ** n1'), s', d') = normalise t1 s
+   in ((Select (Named k) t1' bs ** SelectIsNormal n1'), s', d')
 ---- Converge
 normalise (Trans f t2) s =
   let ((t2' ** n2'), s', d') = normalise t2 s
@@ -100,24 +100,24 @@ insert (Watch _) c _ = Left $ CouldNotHandleValue c
 public export
 handle : (t : Task h a) -> IsNormal t => Input Concrete -> State h -> Either NotApplicable (Task h a, State h, Delta h)
 ---- Selections
--- handle (Select (Named k) t1 bs) @{SelectIsNormal n1} (Decide k' l) s =
---   case k ?= k' of
---     Yes Refl => case value t1 (get s) of
---       Nothing => Left $ CouldNotContinue
---       Just v1 => case lookup l bs of
---         Nothing => Left $ CouldNotFind l
---         Just el =>
---           let tl = el v1 in
---           if failing tl
---             then Left $ CouldNotGoTo l
---             else Right (tl, s, []) -- H-Select
---     No _ => case handle t1 (Decide k' l) s of
---       Right (t1', s', d') => Right (Select (Named k) t1' bs, s', d')
---       Left x => Left x
--- handle (Select (Named k) t1 bs) @{SelectIsNormal n1} (Insert k' v) s =
---   case handle t1 (Insert k' v) s of
---     Right (t1', s', d') => Right (Select (Named k) t1' bs, s', d')
---     Left x => Left x
+handle (Select (Named k) t1 bs) @{SelectIsNormal n1} (Decide k' l) s =
+  case k ?= k' of
+    Yes Refl => case value t1 (get s) of
+      Nothing => Left $ CouldNotContinue
+      Just v1 => case lookup l bs of
+        Nothing => Left $ CouldNotFind l
+        Just e_l =>
+          let t_l = e_l v1 in
+          if failing t_l
+            then Left $ CouldNotGoTo l
+            else Right (t_l, s, []) -- H-Select
+    No _ => case handle t1 (Decide k' l) s of
+      Right (t1', s', d') => Right (Select (Named k) t1' bs, s', d')
+      Left x => Left x
+handle (Select (Named k) t1 bs) @{SelectIsNormal n1} (Insert k' v) s =
+  case handle t1 (Insert k' v) s of
+    Right (t1', s', d') => Right (Select (Named k) t1' bs, s', d')
+    Left x => Left x
 ---- Editors
 handle (Edit (Named k) e) (Insert k' v) s =
   case k ?= k' of

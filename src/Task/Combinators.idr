@@ -46,9 +46,6 @@ update v = new (Update v)
 view : IsBasic a => Show a => Eq a => a -> Task h a
 view v = new (View v)
 
-select : Task h a -> List (Label, a -> Task h b) -> Task h b
-select t cs = Select Unnamed t cs
-
 ---- Shares
 
 -- share : IsBasic a => a -> Task h (Ref h a)
@@ -85,7 +82,7 @@ infixl 3 <?>
 (>**) t1 cs = t1 >>* [ (l, \x => if p x then c x else empty) | (l, p, c) <- cs ]
 
 (>>?) : Task h a -> (a -> Task h b) -> Task h b
-(>>?) t1 e2 = select t1 ["Continue" ~> e2]
+(>>?) t1 e2 = t1 >>* ["Continue" ~> e2]
 
 pick : List (Label, Task h a) -> Task h a
 pick cs = done () >>* [ (l, const t) | (l, t) <- cs ]
