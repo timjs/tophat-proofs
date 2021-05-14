@@ -1,4 +1,4 @@
-module Task.Examples
+module Task.Symbolic.Examples
 
 import Helpers
 import Task.Symbolic.Syntax
@@ -9,6 +9,8 @@ import Task.Symbolic.Run
 
 ---- Absolute value ------------------------------------------------------------
 
+-- >>> simulate (limit 1) absolute empty
+--     [([Insert 0 (Pack (Fresh Int 1))], (Value True &&. (Symbol (Fresh Int 1) >. Value 0), Symbol (Fresh Int 1)))]
 absolute : Task None (Symbolic Int)
 absolute =
   Edit Unnamed Enter `Step` \x =>
@@ -16,6 +18,10 @@ absolute =
 
 ---- Selection -----------------------------------------------------------------
 
+-- >>> > simulate (limit 4) selection empty
+--     [([Insert 0 (Pack (Fresh Int 2)), Decide 1 "Ok"], (Value True, Symbol (Fresh Int 2))),
+--      ([Insert 0 (Pack (Fresh Int 2)), Insert 0 (Pack (Fresh Int 3)), Decide 1 "Ok"], (Value True, Symbol (Fresh Int 3))),
+--      ([Insert 0 (Pack (Fresh Int 2)), Insert 0 (Pack (Fresh Int 3)), Insert 0 (Pack (Fresh Int 4)), Decide 1 "Ok"], (Value True, Symbol (Fresh Int 4)))]
 selection : Task None (Symbolic Int)
 selection =
   Select Unnamed (Edit Unnamed Enter)
@@ -34,6 +40,8 @@ Affirmation = Symbolic Bool
 Date : Type
 Date = Symbolic Int
 
+-- >>> simulate (limit 4) requestSubsidy empty |> length
+--     24
 requestSubsidy : Task None Amount
 requestSubsidy =
   let
@@ -105,6 +113,8 @@ partway this that =
     Fail
   )
 
+-- >>> simulate (limit 6) computerScientists bools |> length
+--     720
 scientist : String -> Ref Triple Availability -> Ref Triple Availability -> Task Triple (Symbolic (String, ()))
 scientist name left right =
   Edit Unnamed (View (Value name)) `Pair` Pick Unnamed
