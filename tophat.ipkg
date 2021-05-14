@@ -1,3 +1,5 @@
 package tophat
 
 depends = base, contrib
+sourcedir = "src"
+builddir = "_build"
