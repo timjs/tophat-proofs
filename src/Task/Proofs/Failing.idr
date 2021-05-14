@@ -13,7 +13,7 @@ import Task.Proofs.Lemmas
 ---- Interaction ---------------------------------------------------------------
 
 export
-failingMeansNoInteraction : (t : Task h b) -> IsNormal t => (s : Heap h) -> IsTrue (failing t) -> IsNothing (value t s) /\ IsNil (inputs t)
+failingMeansNoInteraction : (t : Task h b) -> IsNormal t => (s : Heap h) -> IsTrue (failing t) -> IsNothing (value t s) /\ IsNil (inputs t s)
 failingMeansNoInteraction (Pair t1 t2)                 @{PairIsNormal n1 n2}   s is_f12 with (failing t1 ?= True, failing t2 ?= True)
   failingMeansNoInteraction (Pair t1 t2)               @{PairIsNormal n1 n2}   s is_f12 | (Yes is_f1, Yes is_f2) with (failingMeansNoInteraction t1 s is_f1, failingMeansNoInteraction t2 s is_f2)
     --> `rewrite is_v2` is not needed because of definiiton of `<&>`
@@ -39,3 +39,5 @@ failingMeansNoInteraction (Trans f t2)                 @{TransIsNormal n2}     s
   failingMeansNoInteraction (Trans f t2)               @{TransIsNormal n2}     s is_f | (is_v2, is_i2) = (rewrite is_v2 in Refl, is_i2)
 failingMeansNoInteraction (Step t1 c)                  @{StepIsNormal n1}      s is_f with (failingMeansNoInteraction t1 s is_f)
   failingMeansNoInteraction (Step t1 c)                @{StepIsNormal n1}      s is_f | (is_v1, is_i1) = (Refl, is_i1)
+failingMeansNoInteraction (Select _ t1 bs)             @{SelectIsNormal n1}    s is_f with (failingMeansNoInteraction t1 s is_f)
+  failingMeansNoInteraction (Select _ t1 bs)           @{SelectIsNormal n1}    s is_f | (is_v1, is_i1) = (Refl, rewrite is_v1 in rewrite is_i1 in Refl)
