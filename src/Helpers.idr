@@ -122,7 +122,7 @@ notFalseIsTrue {b = False} nope = absurd (nope Refl)
 
 infixr 0 ~>
 infixl 1 |>
-infixr 9 >>
+infixr 9 .>
 
 public export
 (~>) : a -> b -> (a, b)
@@ -133,8 +133,8 @@ public export
 (|>) x f = f x
 
 public export
-(>>) : (a -> b) -> (b -> c) -> (a -> c)
-(>>) f g x = g (f x)
+(.>) : (a -> b) -> (b -> c) -> (a -> c)
+(.>) f g x = g (f x)
 
 ---- Monads --------------------------------------------------------------------
 
