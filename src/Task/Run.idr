@@ -104,13 +104,15 @@ handle (Select (Named k) t1 bs) @{SelectIsNormal n1} (Decide k' l) s =
   case k ?= k' of
     Yes Refl => case value t1 (get s) of
       Nothing => Left $ CouldNotContinue
-      Just v1 => case lookup l bs of
+      Just v1 => case lookup l (possibilities v1 bs) of
+      -- Just v1 => case lookup l bs of
         Nothing => Left $ CouldNotFind l
         Just e_l =>
           let t_l = e_l v1 in
-          if failing t_l
-            then Left $ CouldNotGoTo l
-            else Right (t_l, s, []) -- H-Select
+          Right (t_l, s, []) -- H-Select
+      --     if failing t_l
+      --       then Left $ CouldNotGoTo l
+      --       else Right (t_l, s, []) -- H-Select
     No _ => case handle t1 (Decide k' l) s of
       Right (t1', s', d') => Right (Select (Named k) t1' bs, s', d')
       Left x => Left x

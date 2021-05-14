@@ -39,5 +39,5 @@ failingMeansNoInteraction (Trans f t2)                 @{TransIsNormal n2}     s
   failingMeansNoInteraction (Trans f t2)               @{TransIsNormal n2}     s is_f | (is_v2, is_i2) = (rewrite is_v2 in Refl, is_i2)
 failingMeansNoInteraction (Step t1 c)                  @{StepIsNormal n1}      s is_f with (failingMeansNoInteraction t1 s is_f)
   failingMeansNoInteraction (Step t1 c)                @{StepIsNormal n1}      s is_f | (is_v1, is_i1) = (Refl, is_i1)
-failingMeansNoInteraction (Select _ t1 bs)             @{SelectIsNormal n1}    s is_f with (failingMeansNoInteraction t1 s is_f)
-  failingMeansNoInteraction (Select _ t1 bs)           @{SelectIsNormal n1}    s is_f | (is_v1, is_i1) = (Refl, rewrite is_v1 in rewrite is_i1 in Refl)
+failingMeansNoInteraction (Select _ t1 cs)             @{SelectIsNormal n1}    s is_f with (failingMeansNoInteraction t1 s is_f)
+  failingMeansNoInteraction (Select _ t1 cs)           @{SelectIsNormal n1}    s is_f | (is_v1, is_i1) = (Refl, rewrite is_v1 in rewrite is_i1 in Refl)

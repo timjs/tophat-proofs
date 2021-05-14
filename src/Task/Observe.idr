@@ -95,6 +95,14 @@ ui (Step t1 e2)             @{StepIsNormal n1}      s = ui t1 s
 --   Nothing => []
 
 public export
+possibilities : a -> List (Label, a -> Task h b) -> List (Label, a -> Task h b)
+possibilities v1 bs = [ (l, e) | (l, e) <- bs, not (failing (e v1)) ]
+
+public export
+makeDecision : Id -> (Label, e) -> (Input Abstract)
+makeDecision k (l, _) = Decide k l
+
+public export
 inputs' : Id -> Editor h a -> List (Input Abstract)
 inputs' k (Enter {a})    = [Insert k (Dummy a)]
 inputs' k (Update {a} _) = [Insert k (Dummy a)]
@@ -106,7 +114,10 @@ public export
 inputs : (t : Task h a) -> IsNormal t => Heap h -> List (Input Abstract)
 inputs (Edit (Named k) e)       @{EditIsNormal}         _ = inputs' k e
 inputs (Select (Named k) t1 bs) @{SelectIsNormal n1}    s = inputs t1 s ++ case value t1 s of
-  Just v1 => [ Decide k l | (l, e) <- bs, not (failing (e v1)) ]
+  Just v1 =>
+    -- [ Decide k l | (l, e) <- possibilities v1 bs ]
+    -- [ Decide k l | (l, e) <- bs, not (failing (e v1)) ]
+    possibilities v1 bs |> map (makeDecision k)
     -- bs |> filter (\(_, e) => not (failing (e v1))) |> map (\(l, _) => Decide k l)
   Nothing => []
 inputs (Trans _ t2)             @{TransIsNormal n2}     s = inputs t2 s
