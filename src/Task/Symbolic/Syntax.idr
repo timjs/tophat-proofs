@@ -24,7 +24,7 @@ mutual
   data Task : (h : Shape) -> (a : Type) -> Type where
     ---- Editors
     Edit   : (n : Name) -> (e : Editor h (Symbolic a)) -> Task h (Symbolic a)
-    Select : (n : Name) -> (t1 : Task h (Symbolic a')) -> (bs : List (Label, Symbolic a' -> Task h (Symbolic a))) -> Task h (Symbolic a)
+    -- Select : (n : Name) -> (t1 : Task h (Symbolic a')) -> (bs : List (Label, Symbolic a' -> Task h (Symbolic a))) -> Task h (Symbolic a)
     ---- Parallels
     Pair   : (t1 : Task h (Symbolic a)) -> (t2 : Task h (Symbolic b)) -> Task h (Symbolic (a, b))
     Done   : (v : Symbolic a) -> Task h (Symbolic a)
@@ -34,7 +34,8 @@ mutual
     Trans  : (e1 : Symbolic a' -> Symbolic a) -> (t2 : Task h (Symbolic a')) -> Task h (Symbolic a) --<< f : Symbolic a' -> Simulation (Symbolic a)
     Step   : (t1 : Task h (Symbolic a')) -> (e2 : Symbolic a' -> Task h (Symbolic a)) -> Task h (Symbolic a) --<< c : Symbolic a' -> Simulation (Task h (Symbolic a))
     ---- Asserts
-    Test   : Symbolic Bool -> Task h (Symbolic a) -> Task h (Symbolic a) -> Task h (Symbolic a)
+    If     : Symbolic Bool -> Task h (Symbolic a) -> Task h (Symbolic a) -> Task h (Symbolic a)
+    Case   : Symbolic (Fin n) -> Vect n (Label, Task h (Symbolic a)) -> Task h (Symbolic a)
     Assert : (p : Symbolic Bool) -> Task h (Symbolic Bool)
     ---- Stores
     -- Share : IsBasic a => a -> Task h (Ref h a)
@@ -53,20 +54,20 @@ mutual
 public export
 Branch : List (Symbolic Bool, Task h (Symbolic a)) -> Task h (Symbolic a)
 Branch [] = Fail
-Branch ((b, t) :: ts) = Test b t (Branch ts)
-
--- public export
--- Select : Name -> Task h (Symbolic a) -> List (Label, Symbolic a -> Task h (Symbolic b)) -> Task h (Symbolic b)
--- Select n t1 cs =
---   (t1 `Pair` Edit n Enter) `Step` ungroup >> \(x, l) =>
---   case lookupBy (==.) l [ (Value l, c) | (l, c) <- cs ] of
---     Just t' => t' x
---     Nothing => Fail
+Branch ((b, t) :: ts) = If b t (Branch ts)
 
 public export
-Pick : Name -> List (Label, Task h (Symbolic a)) -> Task h (Symbolic a)
+Select : {n : Nat} -> Name -> Task h (Symbolic a) -> Vect n (Label, Symbolic a -> Task h (Symbolic b)) -> Task h (Symbolic b)
+Select n t1 cs =
+  (t1 `Pair` Edit n Enter) `Step` ungroup .> \(x, i) =>
+  Case i (map (\(l, c) => (l, c x)) cs)
+
+public export
+Pick : {n : Nat} -> Name -> Vect n (Label, Task h (Symbolic a)) -> Task h (Symbolic a)
 Pick n ts =
-  Select n (Done (Value ())) [ (l, const t) | (l, t) <- ts ]
+  Edit n Enter `Step` \i =>
+  Case i ts
+  -- Select n (Done (Value ())) [ (l, const t) | (l, t) <- ts ]
 
 public export
 Continue : Task h (Symbolic a') -> (Symbolic a' -> Task h (Symbolic a)) -> Task h (Symbolic a)
@@ -82,7 +83,7 @@ Repeat t1 = Select Unnamed t1 ["Repeat" ~> \_ => Repeat t1, "Exit" ~> \x => Done
 public export
 data IsNormal : Task h a -> Type where
   EditIsNormal   : IsNormal (Edit (Named k) e)
-  SelectIsNormal : IsNormal t1 -> IsNormal (Select (Named k) t1 ts)
+  -- SelectIsNormal : IsNormal t1 -> IsNormal (Select (Named k) t1 ts)
   PairIsNormal   : IsNormal t1 -> IsNormal t2 -> IsNormal (Pair t1 t2)
   DoneIsNormal   : IsNormal (Done v)
   ChooseIsNormal : IsNormal t1 -> IsNormal t2 -> IsNormal (Choose t1 t2)
@@ -90,6 +91,6 @@ data IsNormal : Task h a -> Type where
   TransIsNormal  : IsNormal t2 -> IsNormal (Trans f t2)
   StepIsNormal   : IsNormal t1 -> IsNormal (Step t1 c)
 
-public export
-PickIsNormal : IsNormal (Pick (Named k) cs)
-PickIsNormal = SelectIsNormal DoneIsNormal
+-- public export
+-- PickIsNormal : IsNormal (Pick (Named k) cs)
+-- PickIsNormal = SelectIsNormal DoneIsNormal

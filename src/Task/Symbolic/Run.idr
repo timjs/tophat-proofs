@@ -40,13 +40,13 @@ normalise (Choose t1 t2) p s = do
         Just _  => done ((t2' ** n2'), p'', s'', d' ++ d'') -- N-ChooseRight
         Nothing => done ((Choose t1' t2' ** ChooseIsNormal n1' n2'), p'', s'', d' ++ d'') -- N-ChooseNone
 ---- Select
-normalise (Select Unnamed t1 bs) p s = do
-  ((t1' ** n1'), p', s', d') <- normalise t1 p s
-  let (k, s'') = fresh s'
-  done ((Select (Named k) t1' bs ** SelectIsNormal n1'), p', s'', d')
-normalise (Select (Named k) t1 bs) p s = do
-  ((t1' ** n1'), p', s', d') <- normalise t1 p s
-  done ((Select (Named k) t1' bs ** SelectIsNormal n1'), p', s', d')
+-- normalise (Select Unnamed t1 bs) p s = do
+--   ((t1' ** n1'), p', s', d') <- normalise t1 p s
+--   let (k, s'') = fresh s'
+--   done ((Select (Named k) t1' bs ** SelectIsNormal n1'), p', s'', d')
+-- normalise (Select (Named k) t1 bs) p s = do
+--   ((t1' ** n1'), p', s', d') <- normalise t1 p s
+--   done ((Select (Named k) t1' bs ** SelectIsNormal n1'), p', s', d')
 ---- Converge
 normalise (Trans f t2) p s = do
   ((t2' ** n2'), p', s', d') <- normalise t2 p s
@@ -67,7 +67,7 @@ normalise (Edit Unnamed e) p s = do
 normalise (Edit (Named k) e) p s = do
   done ((Edit (Named k) e ** EditIsNormal), p, s, []) -- N-Editor
 ---- Resolve
-normalise (Test b t1 t2) p s =
+normalise (If b t1 t2) p s =
   let fst = do
         (n1', p1', s', d') <- normalise t1 p s
         done (n1', p1' ++ walk b, s', d')
@@ -75,6 +75,13 @@ normalise (Test b t1 t2) p s =
         (n2', p2', s', d') <- normalise t2 p s
         done (n2', p2' ++ walk (Not b), s', d')
    in fst <|> snd
+normalise (Case i ts) p s =
+  foldl (assert_total go) [] ts
+  where
+    go : List (Refined (Task h a) IsNormal, Path, State h, Delta h) -> (Label, Task h a) -> List (Refined (Task h a) IsNormal, Path, State h, Delta h)
+    go res (l, t) = res <|> do
+      (n', p', s', d') <- normalise t p s
+      done (n', p' ++ walk (i ~~. Value l), s', d')
 -- normalise (Repeat t1) p s = do
 --   ((t1' ** n1'), p', s', d') <- normalise t1 p s
 --   let (k, s'') = fresh s'
@@ -110,21 +117,21 @@ insert (Watch _) _ = empty
 public export
 handle : (t : Task h a) -> IsNormal t => Path -> State h -> List (Task h a, Path, Input (Some Token), State h, Delta h)
 ---- Selections
-handle (Select (Named k) t1 bs) @{SelectIsNormal n1} p s =
-  fst <|> snd
-  where -- Need to help type-inferencer here...
-    fst : List (Task h a, Path, Input (Some Token), State h, Delta h)
-    fst = case value t1 (get s) of
-      Nothing => empty
-      Just v1 => do
-        (l, e) <- bs
-        let t' = e v1
-        guard $ not (failing t')
-        done (t', p, Decide k l, s, []) -- H-Select
-    snd : List (Task h a, Path, Input (Some Token), State h, Delta h)
-    snd = do
-      (t1', p', i', s', d') <- handle t1 p s
-      done (Select (Named k) t1' bs, p', i', s', d')
+-- handle (Select (Named k) t1 bs) @{SelectIsNormal n1} p s =
+--   fst <|> snd
+--   where -- Need to help type-inferencer here...
+--     fst : List (Task h a, Path, Input (Some Token), State h, Delta h)
+--     fst = case value t1 (get s) of
+--       Nothing => empty
+--       Just v1 => do
+--         (l, e) <- bs
+--         let t' = e v1
+--         guard $ not (failing t')
+--         done (t', p, Decide k l, s, []) -- H-Select
+--     snd : List (Task h a, Path, Input (Some Token), State h, Delta h)
+--     snd = do
+--       (t1', p', i', s', d') <- handle t1 p s
+--       done (Select (Named k) t1' bs, p', i', s', d')
 ---- Editors
 handle (Edit (Named k) e) p s = do
   (e', z', s', d') <- insert e s

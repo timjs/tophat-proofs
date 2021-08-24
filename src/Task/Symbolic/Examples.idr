@@ -3,6 +3,9 @@ module Task.Symbolic.Examples
 import Helpers
 import Task.Symbolic.Syntax
 
+-- Startup:
+-- $ rlwrap idris2 --source-dir src/ --build-dir _build/ src/Task/Symbolic/Examples.idr
+
 -- These imports are a convenience for the Repl
 import Data.Fuel
 import Task.Symbolic.Run
@@ -18,7 +21,7 @@ absolute =
 
 ---- Selection -----------------------------------------------------------------
 
--- >>> > simulate (limit 4) selection empty
+-- >>> simulate (limit 4) selection empty
 --     [([Insert 0 (Pack (Fresh Int 2)), Decide 1 "Ok"], (Value True, Symbol (Fresh Int 2))),
 --      ([Insert 0 (Pack (Fresh Int 2)), Insert 0 (Pack (Fresh Int 3)), Decide 1 "Ok"], (Value True, Symbol (Fresh Int 3))),
 --      ([Insert 0 (Pack (Fresh Int 2)), Insert 0 (Pack (Fresh Int 3)), Insert 0 (Pack (Fresh Int 4)), Decide 1 "Ok"], (Value True, Symbol (Fresh Int 4)))]
@@ -60,7 +63,7 @@ requestSubsidy =
     officerApprove : Date -> Date -> Affirmation -> Task None Affirmation
     officerApprove invoiced date confirmed =
       Pick Unnamed [
-        "Approve" ~> Test (date -. invoiced <. Value 365 &&. confirmed)
+        "Approve" ~> If (date -. invoiced <. Value 365 &&. confirmed)
           (Done (Value True))
           (Fail),
         "Reject" ~> Done (Value False)
@@ -92,10 +95,10 @@ Result = Symbolic Bool
 pickup : Ref Triple Availability -> Ref Triple Availability -> Task Triple Nil
 pickup this that =
   Edit Unnamed (Watch this) `Step` \thisup =>
-  Test thisup (
+  If thisup (
     Assign (Value False) this `Step` \_ =>
     Edit Unnamed (Watch that) `Continue` \thatup =>
-    Test thatup (
+    If thatup (
       Assign (Value True) this
     ) (
       Fail
@@ -107,7 +110,7 @@ pickup this that =
 partway : Ref Triple Availability -> Ref Triple Availability -> Task Triple Nil
 partway this that =
   Edit Unnamed (Watch that) `Continue` \thatup =>
-  Test thatup (
+  If thatup (
     Assign (Value True) this
   ) (
     Fail
