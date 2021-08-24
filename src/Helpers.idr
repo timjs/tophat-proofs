@@ -7,6 +7,7 @@ import public Data.Either
 import public Data.Fin
 import public Data.List
 import public Data.Maybe
+import public Data.Vect
 
 %default total
 
@@ -135,6 +136,22 @@ public export
 public export
 (.>) : (a -> b) -> (b -> c) -> (a -> c)
 (.>) f g x = g (f x)
+
+---- Vectors -------------------------------------------------------------------
+
+public export
+foldi : (Nat -> b -> a -> b) -> b -> List a -> b
+foldi = foldi' Z
+where
+  foldi' : Nat -> (Nat -> b -> a -> b) -> b -> List a -> b
+  foldi' i g a [] = a
+  foldi' i g a (x :: xs) = foldi' (S i) g (g i a x) xs
+
+---- Fins ----------------------------------------------------------------------
+
+export
+Show (Fin _) where
+  show = show . finToNat
 
 ---- Monads --------------------------------------------------------------------
 

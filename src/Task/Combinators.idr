@@ -46,6 +46,9 @@ update v = new (Update v)
 view : IsBasic a => Show a => Eq a => a -> Task h a
 view v = new (View v)
 
+select : {n : Nat} -> Task h a -> Vect n (Label, a -> Task h b) -> Task h b
+select t cs = Select Unnamed t cs
+
 ---- Shares
 
 -- share : IsBasic a => a -> Task h (Ref h a)
@@ -75,17 +78,17 @@ infixl 1 >**
 infixl 1 >>?
 infixl 3 <?>
 
-(>>*) : Task h a -> List (Label, a -> Task h b) -> Task h b
+(>>*) : {n : Nat} -> Task h a -> Vect n (Label, a -> Task h b) -> Task h b
 (>>*) = Select Unnamed
 
-(>**) : Task h a -> List (Label, a -> Bool, a -> Task h b) -> Task h b
-(>**) t1 cs = t1 >>* [ (l, \x => if p x then c x else empty) | (l, p, c) <- cs ]
+(>**) : Task h a -> Vect n (Label, a -> Bool, a -> Task h b) -> Task h b
+(>**) t1 cs = ?guarded_select_combinator --t1 >>* [ (l, \x => if p x then c x else empty) | (l, p, c) <- cs ]
 
 (>>?) : Task h a -> (a -> Task h b) -> Task h b
-(>>?) t1 e2 = t1 >>* ["Continue" ~> e2]
+(>>?) t1 e2 = select t1 ["Continue" ~> e2]
 
-pick : List (Label, Task h a) -> Task h a
-pick cs = done () >>* [ (l, const t) | (l, t) <- cs ]
+pick : Vect n (Label, Task h a) -> Task h a
+pick cs = ?pick_combinator --done () >>* [ (l, const t) | (l, t) <- cs ]
 
 (<?>) : Task h a -> Task h a -> Task h a
 (<?>) t1 t2 = pick ["Left" ~> t1, "Right" ~> t2]

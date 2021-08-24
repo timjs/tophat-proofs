@@ -17,7 +17,7 @@ import Data.Vect
 
 --------------------------------------------------------------------------------
 
-inputIsHandled : (t : Task h a) -> IsNormal t => (i : Input Concrete) -> (s : State h) -> Elem (dummify i) (inputs t (get s)) -> IsRight (handle t i s)
+inputIsHandled : (t : Task h a) -> IsNormal t => (i : Input Concrete) -> (s : State h) -> Elem (dummify i) (inputs t) -> IsRight (handle t i s)
 inputIsHandled t s i elem = ?inputIsHandled_rhs
 
 --------------------------------------------------------------------------------
@@ -68,40 +68,35 @@ stepNotRight cntr prf with (handle t1 i s)
   stepNotRight cntr prf | Right _ = cntr ItIsRight
   stepNotRight cntr prf | Left  _ = absurd prf
 
-lookupMeansElem : {k : String} -> {vs : List (String, ty)} -> IsJust (lookup k vs) -> (v ** Elem (k, v) vs)
-lookupMeansElem prf with (lookup k vs)
-  lookupMeansElem prf | Nothing = absurd prf
-  lookupMeansElem prf | Just v  = (v ** ?keyvalElemAfterLookup)
-
-handleIsPossible : (t : Task h a) -> IsNormal t => (i : Input Concrete) -> (s : State h) -> IsRight (handle t i s) -> Elem (dummify i) (inputs t (get s))
+handleIsPossible : (t : Task h a) -> IsNormal t => (i : Input Concrete) -> (s : State h) -> IsRight (handle t i s) -> Elem (dummify i) (inputs t)
 ---- Modifiable editors
 handleIsPossible (Edit (Named k) (Enter @{ok})) @{EditIsNormal} (Insert k' (Value @{ok'} v')) s prf with (k ?= k')
   handleIsPossible (Edit (Named k) (Enter @{ok})) @{EditIsNormal} (Insert k  (Value @{ok'} v')) s prf | Yes Refl with (decBasic ok ok')
     handleIsPossible (Edit (Named k) (Enter @{ok})) @{EditIsNormal} (Insert k  (Value @{ok } v')) s prf | Yes Refl | Yes Refl = Here
     handleIsPossible (Edit (Named k) (Enter @{ok})) @{EditIsNormal} (Insert k  (Value @{ok'} v')) s prf | Yes Refl | No  cntr = absurd prf
   handleIsPossible (Edit (Named k) (Enter @{ok})) @{EditIsNormal} (Insert k' (Value @{ok'} v')) s prf | No cntr = absurd prf
-handleIsPossible (Edit (Named k) (Enter @{ok})) @{EditIsNormal} (Decide k' l) s prf = absurd prf
+handleIsPossible (Edit (Named k) (Enter @{ok})) @{EditIsNormal} (Decide n' l) s prf = absurd prf
 handleIsPossible (Edit (Named k) (Update @{ok} v)) @{EditIsNormal} (Insert k' (Value @{ok'} v')) s prf with (k ?= k')
   handleIsPossible (Edit (Named k) (Update @{ok} v)) @{EditIsNormal} (Insert k  (Value @{ok'} v')) s prf | Yes Refl with (decBasic ok ok')
     handleIsPossible (Edit (Named k) (Update @{ok} v)) @{EditIsNormal} (Insert k  (Value @{ok } v')) s prf | Yes Refl | Yes Refl = Here
     handleIsPossible (Edit (Named k) (Update @{ok} v)) @{EditIsNormal} (Insert k  (Value @{ok'} v')) s prf | Yes Refl | No  cntr = absurd prf
   handleIsPossible (Edit (Named k) (Update @{ok} v)) @{EditIsNormal} (Insert k' (Value @{ok'} v')) s prf | No cntr = absurd prf
-handleIsPossible (Edit (Named k) (Update @{ok} v)) @{EditIsNormal} (Decide k' l) s prf = absurd prf
+handleIsPossible (Edit (Named k) (Update @{ok} v)) @{EditIsNormal} (Decide n' l) s prf = absurd prf
 handleIsPossible (Edit (Named k) (Change @{ok} r)) @{EditIsNormal} (Insert k' (Value @{ok'} v)) s prf with (k ?= k')
   handleIsPossible (Edit (Named k) (Change @{ok} r)) @{EditIsNormal} (Insert k  (Value @{ok'} v)) s prf | Yes Refl with (decBasic ok ok')
     handleIsPossible (Edit (Named k) (Change @{ok} r)) @{EditIsNormal} (Insert k  (Value @{ok } v)) s prf | Yes Refl | Yes Refl = Here
     handleIsPossible (Edit (Named k) (Change @{ok} r)) @{EditIsNormal} (Insert k  (Value @{ok'} v)) s prf | Yes Refl | No  cntr = absurd prf
   handleIsPossible (Edit (Named k) (Change @{ok} r)) @{EditIsNormal} (Insert k' (Value @{ok'} v)) s prf | No cntr = absurd prf
-handleIsPossible (Edit (Named k) (Change @{ok} r)) @{EditIsNormal} (Decide k' l) s prf = absurd prf
+handleIsPossible (Edit (Named k) (Change @{ok} r)) @{EditIsNormal} (Decide n' l) s prf = absurd prf
 ---- View-only editors
 handleIsPossible (Edit (Named k) (View v)) (Insert k' c) s prf with (k ?= k')
   handleIsPossible (Edit (Named k) (View v)) (Insert k  c) s prf | Yes Refl = absurd prf
   handleIsPossible (Edit (Named k) (View v)) (Insert k' c) s prf | No cntr = absurd prf
-handleIsPossible (Edit (Named k) (View v)) (Decide k' l) s prf = absurd prf
+handleIsPossible (Edit (Named k) (View v)) (Decide n' l) s prf = absurd prf
 handleIsPossible (Edit (Named k) (Watch r)) (Insert k' c) s prf with (k ?= k')
   handleIsPossible (Edit (Named k) (Watch r)) (Insert k  c) s prf | Yes Refl = absurd prf
   handleIsPossible (Edit (Named k) (Watch r)) (Insert k' c) s prf | No cntr = absurd prf
-handleIsPossible (Edit (Named k) (Watch r)) (Decide k' l) s prf = absurd prf
+handleIsPossible (Edit (Named k) (Watch r)) (Decide n' l) s prf = absurd prf
 ---- Paring
 handleIsPossible (Pair t1 t2) @{PairIsNormal n1 n2} i s prf with (isItRight (handle t1 i s))
   handleIsPossible (Pair t1 t2) @{PairIsNormal n1 n2} i s prf | Yes prf1 = let rec = handleIsPossible t1 i s prf1 in elemInAppend (Left rec)
@@ -122,26 +117,26 @@ handleIsPossible (Trans f t2) @{TransIsNormal n2} i s prf with (isItRight (handl
 handleIsPossible (Step t1 c) @{StepIsNormal n1} i s prf with (isItRight (handle t1 i s))
   handleIsPossible (Step t1 c) @{StepIsNormal n1} i s prf | Yes prf1 = let rec = handleIsPossible t1 i s prf1 in rec
   handleIsPossible (Step t1 c) @{StepIsNormal n1} i s prf | No cntr1 = let not = stepNotRight cntr1 in void (not prf)
----- Selecting
-handleIsPossible (Select (Named k) t1 cs) @{SelectIsNormal n1} (Insert k' v) s prf with (isItRight (handle t1 (Insert k' v) s))
-  handleIsPossible (Select (Named k) t1 cs) @{SelectIsNormal n1} (Insert k' v) s prf | Yes prf1 = let rec = handleIsPossible t1 (Insert k' v) s prf1 in elemInAppend (Left rec)
-  handleIsPossible (Select (Named k) t1 cs) @{SelectIsNormal n1} (Insert k' v) s prf | No cntr1 with (handle t1 (Insert k' v) s)
-    handleIsPossible (Select (Named k) t1 cs) @{SelectIsNormal n1} (Insert k' v) s prf | No cntr1 | Right _ = void (cntr1 ItIsRight)
-    handleIsPossible (Select (Named k) t1 cs) @{SelectIsNormal n1} (Insert k' v) s prf | No cntr1 | Left  _ = absurd prf
-handleIsPossible (Select (Named k) t1 cs) @{SelectIsNormal n1} (Decide k' l) s prf with (k ?= k')
-  handleIsPossible (Select (Named k) t1 cs) @{SelectIsNormal n1} (Decide k  l) s prf | Yes Refl with (value t1 (get s))
-    handleIsPossible (Select (Named k) t1 cs) @{SelectIsNormal n1} (Decide k  l) s prf | Yes Refl | Just v1 with (possibilities v1 cs)
-handleIsPossible (Select (Named k) t1 cs) @{SelectIsNormal n1} (Decide k  l) s prf | Yes Refl | Just v1 | cs' with (isItJust (lookup l cs'))
-        handleIsPossible (Select (Named k) t1 cs) @{ SelectIsNormal n1} (Decide k  l) s prf | Yes Refl | Just v1 | cs' | Yes found = let elem = elemMap (makeDecision k) (snd (lookupMeansElem found)) in elemInAppend (Right elem)
-        handleIsPossible (Select (Named k) t1 cs) @{ SelectIsNormal n1} (Decide k  l) s prf | Yes Refl | Just v1 | cs' | No nFound with (lookup l cs')
-          handleIsPossible (Select (Named k) t1 cs) @{   SelectIsNormal n1} (Decide k  l) s prf | Yes Refl | Just v1 | cs' | No nFound | Nothing = absurd prf
-          handleIsPossible (Select (Named k) t1 cs) @{   SelectIsNormal n1} (Decide k  l) s prf | Yes Refl | Just v1 | cs' | No nFound | Just x = void (nFound ItIsJust)
-    handleIsPossible (Select (Named k) t1 cs) @{SelectIsNormal n1} (Decide k  l) s prf | Yes Refl | Nothing = absurd prf
-  handleIsPossible (Select (Named k) t1 cs) @{SelectIsNormal n1} (Decide k' l) s prf | No _ with (isItRight (handle t1 (Decide k' l) s))
-    handleIsPossible (Select (Named k) t1 cs) @{SelectIsNormal n1} (Decide k' l) s prf | No _ | Yes prf1 = let rec = handleIsPossible t1 (Decide k' l) s prf1 in elemInAppend (Left rec)
-    handleIsPossible (Select (Named k) t1 cs) @{SelectIsNormal n1} (Decide k' l) s prf | No _ | No cntr1 with (handle t1 (Decide k' l) s)
-      handleIsPossible (Select (Named k) t1 cs) @{SelectIsNormal n1} (Decide k' l) s prf | No _ | No cntr1 | Right _ = void (cntr1 ItIsRight)
-      handleIsPossible (Select (Named k) t1 cs) @{SelectIsNormal n1} (Decide k' l) s prf | No _ | No cntr1 | Left  _ = absurd prf
+-- ---- Selecting
+-- handleIsPossible (Select (Named k) t1 cs) @{SelectIsNormal n1} (Insert k' v) s prf with (isItRight (handle t1 (Insert k' v) s))
+--   handleIsPossible (Select (Named k) t1 cs) @{SelectIsNormal n1} (Insert k' v) s prf | Yes prf1 = let rec = handleIsPossible t1 (Insert k' v) s prf1 in elemInAppend (Left rec)
+--   handleIsPossible (Select (Named k) t1 cs) @{SelectIsNormal n1} (Insert k' v) s prf | No cntr1 with (handle t1 (Insert k' v) s)
+--     handleIsPossible (Select (Named k) t1 cs) @{SelectIsNormal n1} (Insert k' v) s prf | No cntr1 | Right _ = void (cntr1 ItIsRight)
+--     handleIsPossible (Select (Named k) t1 cs) @{SelectIsNormal n1} (Insert k' v) s prf | No cntr1 | Left  _ = absurd prf
+-- handleIsPossible (Select (Named k) t1 cs) @{SelectIsNormal n1} (Decide k' l) s prf with (k ?= k')
+--   handleIsPossible (Select (Named k) t1 cs) @{SelectIsNormal n1} (Decide k  l) s prf | Yes Refl with (value t1 (get s))
+--     handleIsPossible (Select (Named k) t1 cs) @{SelectIsNormal n1} (Decide k  l) s prf | Yes Refl | Just v1 with (possibilities v1 cs)
+-- handleIsPossible (Select (Named k) t1 cs) @{SelectIsNormal n1} (Decide k  l) s prf | Yes Refl | Just v1 | cs' with (isItJust (lookup l cs'))
+--         handleIsPossible (Select (Named k) t1 cs) @{ SelectIsNormal n1} (Decide k  l) s prf | Yes Refl | Just v1 | cs' | Yes found = let elem = elemMap (makeDecision k) (snd (lookupMeansElem found)) in elemInAppend (Right elem)
+--         handleIsPossible (Select (Named k) t1 cs) @{ SelectIsNormal n1} (Decide k  l) s prf | Yes Refl | Just v1 | cs' | No nFound with (lookup l cs')
+--           handleIsPossible (Select (Named k) t1 cs) @{   SelectIsNormal n1} (Decide k  l) s prf | Yes Refl | Just v1 | cs' | No nFound | Nothing = absurd prf
+--           handleIsPossible (Select (Named k) t1 cs) @{   SelectIsNormal n1} (Decide k  l) s prf | Yes Refl | Just v1 | cs' | No nFound | Just x = void (nFound ItIsJust)
+--     handleIsPossible (Select (Named k) t1 cs) @{SelectIsNormal n1} (Decide k  l) s prf | Yes Refl | Nothing = absurd prf
+--   handleIsPossible (Select (Named k) t1 cs) @{SelectIsNormal n1} (Decide k' l) s prf | No _ with (isItRight (handle t1 (Decide k' l) s))
+--     handleIsPossible (Select (Named k) t1 cs) @{SelectIsNormal n1} (Decide k' l) s prf | No _ | Yes prf1 = let rec = handleIsPossible t1 (Decide k' l) s prf1 in elemInAppend (Left rec)
+--     handleIsPossible (Select (Named k) t1 cs) @{SelectIsNormal n1} (Decide k' l) s prf | No _ | No cntr1 with (handle t1 (Decide k' l) s)
+--       handleIsPossible (Select (Named k) t1 cs) @{SelectIsNormal n1} (Decide k' l) s prf | No _ | No cntr1 | Right _ = void (cntr1 ItIsRight)
+--       handleIsPossible (Select (Named k) t1 cs) @{SelectIsNormal n1} (Decide k' l) s prf | No _ | No cntr1 | Left  _ = absurd prf
 
 ---- Static tasks
 handleIsPossible (Done v) i s prf = absurd prf
@@ -149,5 +144,5 @@ handleIsPossible Fail i s prf = absurd prf
 
 --------------------------------------------------------------------------------
 
-safe : (t : Task h a) -> IsNormal t => (i : Input Concrete) -> (s : State h) -> Elem (dummify i) (inputs t (get s)) <-> IsRight (handle t i s)
+safe : (t : Task h a) -> IsNormal t => (i : Input Concrete) -> (s : State h) -> Elem (dummify i) (inputs t) <-> IsRight (handle t i s)
 safe t i s = (inputIsHandled t i s, handleIsPossible t i s)

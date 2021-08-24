@@ -26,6 +26,7 @@ data Symbolic : Type -> Type where
   (<.) : Symbolic Int -> Symbolic Int -> Symbolic Bool
   (<=.) : Symbolic Int -> Symbolic Int -> Symbolic Bool
   (==.) : Symbolic Int -> Symbolic Int -> Symbolic Bool
+  (~~.) : Symbolic (Fin n) -> Symbolic String -> Symbolic Bool
   (/=.) : Symbolic Int -> Symbolic Int -> Symbolic Bool
   (>=.) : Symbolic Int -> Symbolic Int -> Symbolic Bool
   (>.) : Symbolic Int -> Symbolic Int -> Symbolic Bool
@@ -55,6 +56,7 @@ infixl 6 -.
 infix  4 <.
 infix  4 <=.
 infix  4 ==.
+infix  4 ~~.
 infix  4 /=.
 infix  4 >=.
 infix  4 >.
@@ -142,6 +144,7 @@ satisfiable (x ==>. y)  = ?satisfiableImply
 satisfiable (x <. y)    = ?satisfiableIntLt
 satisfiable (x <=. y)   = ?satisfiableIntLe
 satisfiable (x ==. y)   = ?satisfiableIntEq
+satisfiable (x ~~. y)   = ?satisfiableFinEq
 satisfiable (x /=. y)   = ?satisfiableIntNq
 satisfiable (x >=. y)   = ?satisfiableIntGe
 satisfiable (x >. y)    = ?satisfiableIntGt
@@ -170,6 +173,7 @@ mutual
     eq1 (x1 <. y1)     (x2 <. y2)     = eq1 x1 x2 && eq1 y1 y2
     eq1 (x1 <=. y1)    (x2 <=. y2)    = eq1 x1 x2 && eq1 y1 y2
     eq1 (x1 ==. y1)    (x2 ==. y2)    = eq1 x1 x2 && eq1 y1 y2
+    eq1 (x1 ~~. y1)    (x2 ~~. y2)    = ?eqSymbolicFin
     eq1 (x1 /=. y1)    (x2 /=. y2)    = eq1 x1 x2 && eq1 y1 y2
     eq1 (x1 >=. y1)    (x2 >=. y2)    = eq1 x1 x2 && eq1 y1 y2
     eq1 (Neg x1)       (Neg x2)       = eq1 x1 x2
@@ -195,6 +199,7 @@ mutual
     eq1 (x1 <. y1)     _              = False
     eq1 (x1 <=. y1)    _              = False
     eq1 (x1 ==. y1)    _              = False
+    eq1 (x1 ~~. y1)    _              = False
     eq1 (x1 /=. y1)    _              = False
     eq1 (x1 >=. y1)    _              = False
     eq1 (Neg x1)       _              = False
@@ -226,6 +231,7 @@ Show a => Show (Symbolic a) where
   show (x <. y)     = show x ++ " < "  ++ show y
   show (x <=. y)    = show x ++ " <= " ++ show y
   show (x ==. y)    = show x ++ " == " ++ show y
+  show (x ~~. y)    = ?showSymbolicFin --"(" ++ show x ++ ", " ++ show y ++ ")"
   show (x /=. y)    = show x ++ " /= " ++ show y
   show (x >=. y)    = show x ++ " >= " ++ show y
   show (x >. y)     = show x ++ " > "  ++ show y
