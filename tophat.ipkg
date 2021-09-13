@@ -1,5 +1,35 @@
 package tophat
 
+authors = "Tim Steenvoorden <tim.steenvoorden@gmail.com>"
+
 depends = base, contrib
+
 sourcedir = "src"
 builddir = "_build"
+
+modules =
+  Control.Monad.Supply,
+  Control.Monoidal,
+  Data.Heap,
+  Data.Name,
+  Data.Some,
+  Data.Symbolic,
+  Helpers,
+  Task.Combinators,
+  Task.Condition,
+  Task.Error,
+  Task.Input,
+  Task.Observe,
+  Task.Proofs.Conditions,
+  Task.Proofs.Failing,
+  Task.Proofs.Inputs,
+  Task.Proofs.Lemmas,
+  Task.Proofs.Static,
+  Task.Run,
+  Task.State,
+  Task.Symbolic.Examples,
+  Task.Symbolic.Observe,
+  Task.Symbolic.Run,
+  Task.Symbolic.Syntax,
+  Task.Syntax,
+  Type.Basic
