@@ -18,6 +18,10 @@ empty : State None
 empty = (iterate S 0, Empty)
 
 export
+wrap : Heap h -> State h
+wrap h = (iterate S 0, h)
+
+export
 bools : State Triple
 bools = (iterate S 0, Saved3 (Value True) (Value True) (Value True))
 

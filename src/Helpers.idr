@@ -210,6 +210,11 @@ notNothingIsJust : {m : Maybe a} -> Not (IsNothing m) -> IsJust m
 notNothingIsJust {m = Nothing} f = void (f Refl)
 notNothingIsJust {m = Just _}  f = ItIsJust
 
+export
+justNothingAbsurd : IsJust x /\ IsNothing x -> Void
+justNothingAbsurd (ItIsJust, Refl) impossible
+
+
 ---- IsItRight or IsItLeft -----------------------------------------------------
 
 public export

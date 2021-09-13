@@ -91,3 +91,20 @@ SelectIsNormal n1 = StepIsNormal (PairIsNormal n1 EditIsNormal)
 public export
 PickIsNormal : IsNormal (Pick (Named k) cs)
 PickIsNormal = StepIsNormal EditIsNormal --SelectIsNormal DoneIsNormal
+
+
+---- Static predicate ----------------------------------------------------------
+
+-- public export
+-- data IsStaticEditor : Editor h a -> Type where
+
+public export
+data IsStatic : Task h a -> Type where
+  -- EditIsStatic  : IsStatic (Edit (Named k) d)
+  UpdateIsStatic : IsBasic a => Show a => Eq a => {0 v : a} -> IsStatic (Edit (Named k) (Update v))
+  ViewIsStatic   : IsBasic a => Show a => Eq a => {0 v : a} -> IsStatic (Edit (Named k) (View v))
+  ChangeIsStatic : IsBasic a => Show a => Eq a => {0 r : Ref h a} -> IsStatic (Edit (Named k) (Change r))
+  WatchIsStatic  : IsBasic a => Show a => Eq a => {0 r : Ref h a} -> IsStatic (Edit (Named k) (Watch r))
+  PairIsStatic   : IsStatic t1 -> IsStatic t2 -> IsStatic (Pair t1 t2)
+  DoneIsStatic   : IsStatic (Done v)
+  TransIsStatic  : IsStatic t2 -> IsStatic (Trans e1 t2)
