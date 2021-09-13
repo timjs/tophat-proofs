@@ -32,7 +32,11 @@ unalt_IsJust : {x : Maybe a} -> {y : Maybe a} -> IsJust (x <|> y) -> IsJust x \/
 unalt_IsJust {x=Just v}  {y=_}       ItIsJust = Left ItIsJust
 unalt_IsJust {x=Nothing} {y=Just w } ItIsJust = Right ItIsJust
 
-||| Axiom, not provable in this system, would need to rewrite Task.Run.normalise using decidability on value observation, because now we'd need to "reverse engineer" the normalisation algorithm...
+||| Axiom, not provable in this system, would need to rewrite Task.Run.normalise using decidability on value observation and keep track of the states.
+||| Saving that `IsNothing (value t1 s)` in `ChooseIsNormal` would save witnesses for two different states (N-ChooseFirst and N-ChooseRight).
+||| (See branch `exp-save-novalue`)
+||| But we also know that, after fixation, these states are the same, because there were no alterations in shares...
+||| How to keep track of this in Idris too?
 normal_choose_means_no_value : (t : Task h b) -> IsNormal t => {t1 : Task h b} -> IsNormal t1 => {t2 : Task h b} -> IsNormal t2 => (s : Heap h) -> (t = Choose t1 t2) -> IsNothing (value t1 s) /\ IsNothing (value t2 s)
 -- normal_choose_means_no_value (Choose t1 t2) s Refl with (normalise (Choose t1 t2) (wrap s))
 --   normal_choose_means_no_value (Choose t1 t2) s Refl | ((t' ** n'), s', d') with (value t1 s, value t2 s)
